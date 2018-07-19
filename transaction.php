@@ -1,36 +1,75 @@
 <?php
-class ModelReportTransaction extends Model {
-    public function getTotalByAccount($account_id, $data) {
-        $sql = "SELECT SUM(credit) AS credit, SUM(debit) AS debit FROM " . DB_PREFIX . "transaction_account ta LEFT JOIN " . DB_PREFIX . "transaction t ON t.transaction_id = ta.transaction_id WHERE ta.account_id = '" . (int)$account_id . "'";
+class ControllerApiTransaction extends Controller {
+    public function add() {
+        $this->load->language('api/transaction');
 
-        if (!empty($data['filter_date_start'])) {
-            $sql .= " AND DATE(t.date) >= '" . $this->db->escape($data['filter_date_start']) . "'";
+        $json = array();
+
+        $json['success'] = false;
+
+        if (isset($this->request->post['api_key']) && isset($this->session->data['api_key']) && $this->request->post['api_key'] == $this->session->data['api_key']) {
+            $this->load->model('accounting/transaction');
+            $this->load->model('system/activity');
+
+            if ((utf8_strlen($this->request->post['description']) < 3) || (utf8_strlen($this->request->post['description']) > 1000)) {
+                $json['error'][] = $this->language->get('error_description');
+            }
+
+            if (!(float)$this->request->post['currency_value']) {
+                $json['error'][] = $this->language->get('error_currency_value');
+            }
+
+            if (empty($this->request->post['date'])) {
+                $json['error'][] = $this->language->get('error_date');
+            }
+
+            $debit = 0;
+            $credit = 0;
+
+            foreach ($this->request->post['transaction_accounts'] as $account) {
+                if (!isset($account['account_id'])) {
+                    $json['error'][] = $this->language->get('error_account_id');
+                }
+
+                if (preg_match('/^\(.+\)$/', $account['debit'])) {
+                    $account['debit'] = preg_replace('/[^\d.-]/', '', $account['debit']);
+
+                    $account['debit'] = '-' . (float)$account['debit'];
+                }
+
+                if (preg_match('/^\(.+\)$/', $account['credit'])) {
+                    $account['credit'] = preg_replace('/[^\d.-]/', '', $account['credit']);
+
+                    $account['credit'] = '-' . (float)$account['credit'];
+                }
+
+                $debit += $account['debit'];
+                $credit += $account['credit'];
+            }
+
+            if (round($debit, 4) != round($credit, 4)) {
+                $json['error'][] = $this->language->get('error_account');
+            }
+
+            if (empty($json['error'])) {
+                $data = array(
+                    'description'          => $this->request->post['description'],
+                    'currency_code'        => $this->request->post['currency_code'],
+                    'currency_value'       => $this->request->post['currency_value'],
+                    'invoice_id'           => isset($this->request->post['invoice_id']) ? $this->request->post['invoice_id'] : 0,
+                    'date'                 => $this->request->post['date'],
+                    'transaction_accounts' => $this->request->post['transaction_accounts']
+                );
+
+                $this->model_accounting_transaction->addTransaction($this->request->post);
+
+                $this->model_system_activity->addActivity(sprintf($this->language->get('text_transaction'), $this->request->post['date'], $this->session->data['username']));
+
+                $json['success'] = true;
+            }
         }
 
-        if (!empty($data['filter_date_end'])) {
-            $sql .= " AND DATE(t.date) <= '" . $this->db->escape($data['filter_date_end']) . "'";
-        }
-
-        $query = $this->db->query($sql);
-
-        return $query->row;
-    }
-
-    public function getTotalTransactions($data = array()) {
-        $sql = "SELECT COUNT(*) AS total FROM " . DB_PREFIX . "transaction";
-
-        $implode = array();
-
-        if (!empty($data['filter_date_start']) && !empty($data['filter_date_end'])) {
-            $implode[] = "DATE(date) >= DATE('" . $this->db->escape($data['filter_date_start']) . "') AND DATE(date) <= DATE('" . $this->db->escape($data['filter_date_end']) . "')";
-        }
-
-        if ($implode) {
-            $sql .= " WHERE " . implode(" AND ", $implode);
-        }
-
-        $query = $this->db->query($sql);
-
-        return $query->row['total'];
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
     }
 }

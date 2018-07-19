@@ -1,20 +1,19 @@
 <?php
-class ModelReportCustomer extends Model {
-    public function getTotalCustomers($data = array()) {
-        $sql = "SELECT COUNT(*) AS total FROM " . DB_PREFIX . "customer";
+class ControllerApiCustomer extends Controller {
+    public function login() {
+        $json = array();
 
-        $implode = array();
+        $json['success'] = false;
 
-        if (!is_null($data['filter_status'])) {
-            $implode[] = " status = '" . (int)$data['filter_status'] . "'";
+        if (isset($this->request->post['api_key']) && isset($this->session->data['api_key']) && $this->request->post['api_key'] == $this->session->data['api_key']) {
+            if (isset($this->request->post['email']) && isset($this->request->post['password'])) {
+                if ($this->customer->login($this->request->post['email'], $this->request->post['password'])) {
+                    $json['success'] = true;
+                }
+            }
         }
 
-        if ($implode) {
-            $sql .= " WHERE " . implode(" AND ", $implode);
-        }
-
-        $query = $this->db->query($sql);
-
-        return $query->row['total'];
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
     }
 }

@@ -1,478 +1,312 @@
 <?php
-class ControllerAccountInvoice extends Controller {
-    public function index() {
-        if (!$this->customer->isLogged()) {
-            $this->session->data['redirect'] = $this->url->link('account/invoice', '', 'SSL');
+class ControllerApiInvoice extends Controller {
+    public function check() {
+        $this->load->language('api/invoice');
 
-            $this->response->redirect($this->url->link('account/login', '', 'SSL'));
-        }
+        $json = array();
 
-        $this->data = $this->load->language('account/invoice');
+        $json['success'] = false;
 
-        $this->document->setTitle($this->language->get('heading_title'));
+        if (isset($this->request->post['api_key']) && isset($this->session->data['api_key']) && $this->request->post['api_key'] == $this->session->data['api_key']) {
+            $this->load->model('billing/invoice');
+            $this->load->model('system/activity');
+            $this->load->model('system/status');
 
-        $this->data['breadcrumbs'] = array();
+            // Overdue
+            $status = $this->model_system_status->getStatus($this->config->get('config_default_overdue_status'));
 
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_home'),
-            'href' => $this->url->link('common/home')
-        );
+            $invoices = $this->model_billing_invoice->getPendingInvoices();
 
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_account'),
-            'href' => $this->url->link('account/account', '', 'SSL')
-        );
+            foreach ($invoices as $invoice) {
+                if (strtotime($invoice['date_due']) <= time()) {
+                    $this->model_billing_invoice->editStatus($invoice['invoice_id'], $this->config->get('config_default_overdue_status'), '', true);
 
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('heading_title'),
-            'href' => $this->url->link('account/invoice', '', 'SSL')
-        );
-
-        if (isset($this->session->data['success'])) {
-            $this->data['success'] = $this->session->data['success'];
-
-            unset($this->session->data['success']);
-        } else {
-            $this->data['success'] = '';
-        }
-
-        if (isset($this->request->get['page'])) {
-            $page = (int)$this->request->get['page'];
-        } else {
-            $page = 1;
-        }
-
-        $this->load->model('billing/invoice');
-
-        $filter_data = array(
-            'start' => $this->config->get('config_limit_application') * ($page - 1),
-            'limit' => $this->config->get('config_limit_application')
-        );
-
-        $invoices = $this->model_billing_invoice->getInvoices($filter_data);
-
-        $this->data['invoices'] = array();
-
-        foreach ($invoices as $invoice) {
-            $this->data['invoices'][] = array(
-                'invoice_id'  => $invoice['invoice_id'],
-                'date_issued' => date($this->language->get('date_format_short'), strtotime($invoice['date_issued'])),
-                'date_due'    => date($this->language->get('date_format_short'), strtotime($invoice['date_due'])),
-                'total'       => $this->currency->format($invoice['total'], $invoice['currency_code'], $invoice['currency_value']),
-                'status'      => $invoice['status'],
-                'invoice'     => $this->url->link('account/invoice/invoice', 'invoice_id=' . $invoice['invoice_id'], 'SSL'),
-                'view'        => $this->url->link('account/invoice/view', 'invoice_id=' . $invoice['invoice_id'], 'SSL')
-            );
-        }
-
-        $pagination = new Pagination();
-        $pagination->total = $this->model_billing_invoice->getTotalInvoices();
-        $pagination->page = $page;
-        $pagination->limit = $this->config->get('config_limit_application');
-        $pagination->url = $this->url->link('account/invoice', 'page={page}', 'SSL');
-
-        $this->data['pagination'] = $pagination->render();
-
-        $this->data['header'] = $this->load->controller('common/header');
-        $this->data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->render('account/invoice_list.tpl'));
-    }
-
-    public function invoice() {
-        if (!$this->customer->isLogged()) {
-            $this->session->data['redirect'] = $this->url->link('account/invoice', '', 'SSL');
-
-            $this->response->redirect($this->url->link('account/login', '', 'SSL'));
-        }
-
-        $this->data = $this->load->language('account/invoice');
-
-        $this->data['title'] = $this->language->get('heading_title');
-
-        if ($this->request->server['HTTPS']) {
-            $this->data['base'] = HTTPS_SERVER;
-        } else {
-            $this->data['base'] = HTTP_SERVER;
-        }
-
-        $this->load->model('billing/invoice');
-
-        $invoice_info = $this->model_billing_invoice->getInvoice((int)$this->request->get['invoice_id'], $this->customer->getId());
-
-        if ($invoice_info) {
-            $this->data['system_company'] = $this->config->get('config_registered_name');
-            $this->data['system_address'] = nl2br($this->config->get('config_address'));
-            $this->data['system_email'] = $this->config->get('config_email');
-            $this->data['system_telephone'] = $this->config->get('config_telephone');
-            $this->data['system_fax'] = $this->config->get('config_fax');
-            $this->data['invoice_prefix'] = $this->config->get('config_invoice_prefix');
-
-            $this->data['invoice_id'] = $invoice_info['invoice_id'];
-            $this->data['customer'] = $invoice_info['customer'];
-            $this->data['firstname'] = $invoice_info['firstname'];
-            $this->data['lastname'] = $invoice_info['lastname'];
-            $this->data['company'] = $invoice_info['company'];
-            $this->data['website'] = $invoice_info['website'];
-            $this->data['email'] = $invoice_info['email'];
-            $this->data['status'] = $invoice_info['status'];
-            $this->data['payment_firstname'] = $invoice_info['payment_firstname'];
-            $this->data['payment_lastname'] = $invoice_info['payment_lastname'];
-            $this->data['payment_company'] = $invoice_info['payment_company'];
-            $this->data['payment_address_1'] = $invoice_info['payment_address_1'];
-            $this->data['payment_address_2'] = $invoice_info['payment_address_2'];
-            $this->data['payment_city'] = $invoice_info['payment_city'];
-            $this->data['payment_postcode'] = $invoice_info['payment_postcode'];
-            $this->data['payment_country'] = $invoice_info['payment_country'];
-            $this->data['payment_zone'] = $invoice_info['payment_zone'];
-            $this->data['payment_name'] = $invoice_info['payment_name'];
-            $this->data['payment_description'] = $invoice_info['payment_description'];
-            $this->data['date_issued'] = sprintf($this->language->get('text_issued'), date($this->language->get('date_format_short'), strtotime($invoice_info['date_issued'])));
-            $this->data['date_modified'] = date($this->language->get('date_format_short'), strtotime($invoice_info['date_modified']));
-
-            $items = $invoice_info['items'];
-
-            $this->data['items'] = array();
-
-            $number = 1;
-
-            foreach ($items as $item) {
-                $this->data['items'][] = array(
-                    'number'      => $number,
-                    'title'       => html_entity_decode($item['title'], ENT_QUOTES),
-                    'description' => html_entity_decode(nl2br($item['description']), ENT_QUOTES),
-                    'quantity'    => $item['quantity'],
-                    'price'       => $this->currency->format($item['price'], $invoice_info['currency_code'], $invoice_info['currency_value']),
-                    'discount'    => (float)$item['discount'] ? $this->currency->format($item['discount'], $invoice_info['currency_code'], $invoice_info['currency_value']) : '-',
-                    'total'       => $this->currency->format(($item['price'] - $item['discount']) * $item['quantity'], $invoice_info['currency_code'], $invoice_info['currency_value'])
-                );
-
-                $number++;
-            }
-
-            $totals = $invoice_info['totals'];
-
-            $this->data['totals'] = array();
-
-            foreach ($totals as $total) {
-                $this->data['totals'][] = array(
-                    'title' => html_entity_decode($total['title'], ENT_QUOTES),
-                    'text'  => $this->currency->format($total['value'], $invoice_info['currency_code'], $invoice_info['currency_value'])
-                );
-            }
-
-            if (in_array($invoice_info['status_id'], $this->config->get('config_pending_status')) || in_array($invoice_info['status_id'], $this->config->get('config_overdue_status'))) {
-                $this->data['payment_url'] = $this->url->link('account/invoice/payment', 'invoice_id=' . $invoice_info['invoice_id'], 'SSL');
-            } else {
-                $this->data['payment_url'] = '';
-            }
-
-            $this->response->setOutput($this->render('account/invoice_invoice.tpl'));
-        } else {
-            return new Action('error/not_found');
-        }
-    }
-
-    public function payment() {
-        if (!$this->customer->isLogged()) {
-            $this->session->data['redirect'] = $this->url->link('account/invoice', '', 'SSL');
-
-            $this->response->redirect($this->url->link('account/login', '', 'SSL'));
-        }
-
-        $this->data = $this->load->language('account/invoice');
-
-        $this->load->model('billing/invoice');
-
-        $invoice_info = $this->model_billing_invoice->getInvoice((int)$this->request->get['invoice_id'], $this->customer->getId());
-
-        if ($invoice_info) {
-            if (!(in_array($invoice_info['status_id'], $this->config->get('config_pending_status')) || in_array($invoice_info['status_id'], $this->config->get('config_overdue_status')))) {
-                return new Action('error/not_found');
-            }
-
-            $this->document->setTitle($this->language->get('text_invoice_payment'));
-
-            $this->data['breadcrumbs'] = array();
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_home'),
-                'href' => $this->url->link('common/home')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_account'),
-                'href' => $this->url->link('account/account', '', 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('heading_title'),
-                'href' => $this->url->link('account/invoice', '', 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_invoice_payment'),
-                'href' => $this->url->link('account/invoice/payment', 'invoice_id=' . $invoice_info['invoice_id'], 'SSL')
-            );
-
-            $this->data['text_invoice_info'] = sprintf($this->language->get('text_invoice_info'), $invoice_info['invoice_id']);
-
-            $this->data['invoice_id'] = $invoice_info['invoice_id'];
-            $this->data['payment_name'] = $invoice_info['payment_name'];
-            $this->data['payment_description'] = $invoice_info['payment_description'];
-
-            $items = $invoice_info['items'];
-
-            $this->data['items'] = array();
-
-            $number = 1;
-
-            foreach ($items as $item) {
-                $this->data['items'][] = array(
-                    'number'      => $number,
-                    'title'       => html_entity_decode($item['title'], ENT_QUOTES),
-                    'description' => html_entity_decode(nl2br($item['description']), ENT_QUOTES),
-                    'quantity'    => $item['quantity'],
-                    'price'       => $this->currency->format($item['price'], $invoice_info['currency_code'], $invoice_info['currency_value']),
-                    'discount'    => (float)$item['discount'] ? $this->currency->format($item['discount'], $invoice_info['currency_code'], $invoice_info['currency_value']) : '-',
-                    'total'       => $this->currency->format(($item['price'] - $item['discount']) * $item['quantity'], $invoice_info['currency_code'], $invoice_info['currency_value'])
-                );
-
-                $number++;
-            }
-
-            $totals = $invoice_info['totals'];
-
-            $this->data['totals'] = array();
-
-            foreach ($totals as $total) {
-                $this->data['totals'][] = array(
-                    'title' => html_entity_decode($total['title'], ENT_QUOTES),
-                    'text'  => $this->currency->format($total['value'], $invoice_info['currency_code'], $invoice_info['currency_value'])
-                );
-            }
-
-            $this->load->model('extension/extension');
-
-            $payments = $this->model_extension_extension->getInstalled('payment');
-
-            $this->data['payments'] = array();
-
-            foreach ($payments as $payment) {
-                if ($this->config->get($payment . '_status')) {
-                    if (!$invoice_info['payment_code'] || $invoice_info['payment_code'] == $payment) {
-                        $this->load->language('payment/' . $payment);
-
-                        $this->data['payments'][] = array(
-                            'name'       => $this->language->get('heading_title'),
-                            'code'       => $payment,
-                            'sort_order' => $this->config->get($payment . '_sort_order')
-                        );
-                    }
+                    $this->model_system_activity->addActivity(sprintf($this->language->get('text_updated'), $invoice['invoice_id'], $status['name'], $this->session->data['username']));
                 }
             }
 
-            $sort_order = array();
+            // Void
+            $status = $this->model_system_status->getStatus($this->config->get('config_default_void_status'));
 
-            foreach ($this->data['payments'] as $key => $value) {
-                $sort_order[$key] = $value['sort_order'];
-            }
+            $invoices = $this->model_billing_invoice->getOverdueInvoices();
 
-            array_multisort($sort_order, SORT_ASC, $this->data['payments']);
+            foreach ($invoices as $invoice) {
+                if (strtotime($invoice['date_due'] . ' +' . $this->config->get('config_invoice_void_days') . ' days') <= time()) {
+                    $this->model_billing_invoice->editStatus($invoice['invoice_id'], $this->config->get('config_default_void_status'), '', true);
 
-            $this->data['header'] = $this->load->controller('common/header');
-            $this->data['footer'] = $this->load->controller('common/footer');
-
-            $this->response->setOutput($this->render('account/invoice_payment.tpl'));
-        } else {
-            return new Action('error/not_found');
-        }
-    }
-
-    public function success() {
-        if (!$this->customer->isLogged()) {
-            $this->session->data['redirect'] = $this->url->link('account/invoice', '', 'SSL');
-
-            $this->response->redirect($this->url->link('account/login', '', 'SSL'));
-        }
-
-        if (isset($this->request->get['invoice_id'])) {
-            $this->data = $this->load->language('account/invoice');
-
-            $this->document->setTitle($this->language->get('text_invoice_success'));
-
-            $this->data['breadcrumbs'] = array();
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_home'),
-                'href' => $this->url->link('common/home')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_account'),
-                'href' => $this->url->link('account/account', '', 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('heading_title'),
-                'href' => $this->url->link('account/invoice', '', 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_invoice_payment'),
-                'href' => $this->url->link('account/invoice/payment', 'invoice_id=' . $this->request->get['invoice_id'], 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_invoice_success'),
-                'href' => $this->url->link('account/invoice/success', 'invoice_id=' . $this->request->get['invoice_id'], 'SSL')
-            );
-
-            $this->data['text_invoice_success_info'] = sprintf($this->language->get('text_invoice_success_info'), $this->request->get['invoice_id']);
-
-            $this->data['continue'] = $this->url->link('account/invoice', '', 'SSL');
-
-            $this->data['header'] = $this->load->controller('common/header');
-            $this->data['footer'] = $this->load->controller('common/footer');
-
-            $this->response->setOutput($this->render('account/invoice_success.tpl'));
-
-        } else {
-            return new Action('error/not_found');
-        }
-    }
-
-    public function view() {
-        if (!$this->customer->isLogged()) {
-            $this->session->data['redirect'] = $this->url->link('account/invoice', '', 'SSL');
-
-            $this->response->redirect($this->url->link('account/login', '', 'SSL'));
-        }
-
-        $this->data = $this->load->language('account/invoice');
-
-        $this->load->model('billing/invoice');
-
-        $invoice_info = $this->model_billing_invoice->getInvoice((int)$this->request->get['invoice_id'], $this->customer->getId());
-
-        if ($invoice_info) {
-            $this->document->setTitle(sprintf($this->language->get('text_invoice'), $invoice_info['invoice_id']));
-
-            $this->data['breadcrumbs'] = array();
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_home'),
-                'href' => $this->url->link('common/home')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_account'),
-                'href' => $this->url->link('account/account', '', 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('heading_title'),
-                'href' => $this->url->link('account/invoice', '', 'SSL')
-            );
-
-            $this->data['breadcrumbs'][] = array(
-                'text' => sprintf($this->language->get('text_invoice'), $invoice_info['invoice_id']),
-                'href' => $this->url->link('account/invoice/view', 'invoice_id=' . $invoice_info['invoice_id'], 'SSL')
-            );
-
-            $this->data['text_invoice'] = sprintf($this->language->get('text_invoice'), $invoice_info['invoice_id']);
-
-            $this->data['invoice_id'] = $invoice_info['invoice_id'];
-            $this->data['date_issued'] = sprintf($this->language->get('text_issued'), date($this->language->get('date_format_short'), strtotime($invoice_info['date_issued'])));
-            $this->data['date_due'] = sprintf($this->language->get('text_due'), date($this->language->get('date_format_short'), strtotime($invoice_info['date_due'])));
-            $this->data['status'] = $invoice_info['status'];
-            $this->data['payment_name'] = $invoice_info['payment_name'];
-            $this->data['payment_description'] = $invoice_info['payment_description'];
-
-            $items = $invoice_info['items'];
-
-            $this->data['items'] = array();
-
-            $number = 1;
-
-            foreach ($items as $item) {
-                $this->data['items'][] = array(
-                    'number'      => $number,
-                    'title'       => html_entity_decode($item['title'], ENT_QUOTES),
-                    'description' => html_entity_decode(nl2br($item['description']), ENT_QUOTES),
-                    'quantity'    => $item['quantity'],
-                    'price'       => $this->currency->format($item['price'], $invoice_info['currency_code'], $invoice_info['currency_value']),
-                    'discount'    => (float)$item['discount'] ? $this->currency->format($item['discount'], $invoice_info['currency_code'], $invoice_info['currency_value']) : '-',
-                    'total'       => $this->currency->format(($item['price'] - $item['discount']) * $item['quantity'], $invoice_info['currency_code'], $invoice_info['currency_value'])
-                );
-
-                $number++;
-            }
-
-            $totals = $invoice_info['totals'];
-
-            $this->data['totals'] = array();
-
-            foreach ($totals as $total) {
-                $this->data['totals'][] = array(
-                    'title' => html_entity_decode($total['title'], ENT_QUOTES),
-                    'text'  => $this->currency->format($total['value'], $invoice_info['currency_code'], $invoice_info['currency_value'])
-                );
-            }
-
-            if (in_array($invoice_info['status_id'], $this->config->get('config_pending_status')) || in_array($invoice_info['status_id'], $this->config->get('config_overdue_status'))) {
-                $this->data['payment_url'] = $this->url->link('account/invoice/payment', 'invoice_id=' . $invoice_info['invoice_id'], 'SSL');
-            } else {
-                $this->data['payment_url'] = '';
-            }
-
-            $this->data['header'] = $this->load->controller('common/header');
-            $this->data['footer'] = $this->load->controller('common/footer');
-
-            $this->response->setOutput($this->render('account/invoice_view.tpl'));
-        } else {
-            return new Action('error/not_found');
-        }
-    }
-
-    public function history() {
-        $json = $this->load->language('account/invoice');;
-
-        $this->load->model('billing/invoice');
-
-        if (isset($this->request->get['invoice_id'])) {
-            $invoice_info = $this->model_billing_invoice->getInvoice((int)$this->request->get['invoice_id']);
-
-            if ($invoice_info) {
-                if (!isset($this->request->get['page'])) {
-                    $page = 1;
-                } else {
-                    $page = (int)$this->request->get['page'];
+                    $this->model_system_activity->addActivity(sprintf($this->language->get('text_updated'), $invoice['invoice_id'], $status['name'], $this->session->data['username']));
                 }
+            }
 
-                $histories = $this->model_billing_invoice->getHistoriesByInvoice($invoice_info['invoice_id'], ($page - 1) * $this->config->get('config_limit_application'), $this->config->get('config_limit_application'));
+            $json['success'] = true;
+        }
 
-                $json['histories'] = array();
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
 
-                foreach ($histories as $history) {
-                    $json['histories'][] = array(
-                        'status'     => $history['status'],
-                        'comment'    => $history['comment'],
-                        'date_added' => date($this->language->get('datetime_format_short'), strtotime($history['date_added']))
+    public function add() {
+        $this->load->language('api/invoice');
+
+        $json = array();
+
+        $json['success'] = false;
+
+        if (isset($this->request->post['api_key']) && isset($this->session->data['api_key']) && $this->request->post['api_key'] == $this->session->data['api_key']) {
+            $this->load->model('billing/customer');
+            $this->load->model('billing/invoice');
+            $this->load->model('system/activity');
+            $this->load->model('system/status');
+
+            $json = array_merge($json, $this->validate());
+
+            if (empty($json['error'])) {
+                $items = array();
+
+                foreach ($this->request->post['items'] as $item) {
+                    $items[] = array(
+                        'title'        => isset($item['title']) ? $item['title'] : '',
+                        'description'  => isset($item['description']) ? $item['description'] : '',
+                        'tax_class_id' => isset($item['tax_class_id']) ? $item['tax_class_id'] : 0,
+                        'quantity'     => isset($item['quantity']) ? $item['quantity'] : 1,
+                        'price'        => isset($item['price']) ? $item['price'] : 0,
+                        'tax'          => isset($item['tax']) ? $item['tax'] : 0,
+                        'discount'     => isset($item['discount']) ? $item['discount'] : 0
                     );
                 }
 
-                $pagination = new Pagination();
-                $pagination->total = $this->model_billing_invoice->getTotalHistoriesByInvoice($invoice_info['invoice_id']);
-                $pagination->page = $page;
-                $pagination->limit = $this->config->get('config_limit_application');
-                $pagination->url = '{page}';
+                $totals = array();
 
-                $json['pagination'] = $pagination->render();
+                foreach ($this->request->post['totals'] as $total) {
+                    $totals[] = array(
+                        'code'       => isset($total['code']) ? $total['code'] : '',
+                        'title'      => isset($total['title']) ? $total['title'] : '',
+                        'value'      => isset($total['value']) ? $total['value'] : 0,
+                        'sort_order' => isset($total['sort_order']) ? $total['sort_order'] : 0,
+                    );
+                }
+
+                $customer_info = $this->model_billing_customer->getCustomerByEmail($this->request->post['email']);
+
+                if (!$customer_info) {
+                    $data = array(
+                        'firstname' => $this->request->post['firstname'],
+                        'lastname'  => $this->request->post['lastname'],
+                        'company'   => isset($this->request->post['company']) ? $this->request->post['company'] : '',
+                        'website'   => isset($this->request->post['website']) ? $this->request->post['website'] : '',
+                        'email'     => $this->request->post['email'],
+                        'password'  => substr(sha1(uniqid(mt_rand(), true)), 0, 10)
+                    );
+
+                    $this->model_billing_customer->addCustomer($data);
+
+                    $customer_info = $this->model_billing_customer->getCustomerByEmail($this->request->post['email']);
+                }
+
+                $data = array(
+                    'recurring_id'        => '',
+                    'customer_id'         => $customer_info['customer_id'],
+                    'firstname'           => $customer_info['firstname'],
+                    'lastname'            => $customer_info['lastname'],
+                    'company'             => $customer_info['company'],
+                    'website'             => $customer_info['website'],
+                    'email'               => $customer_info['email'],
+                    'payment_firstname'   => $this->request->post['firstname'],
+                    'payment_lastname'    => $this->request->post['lastname'],
+                    'payment_company'     => isset($this->request->post['company']) ? $this->request->post['company'] : '',
+                    'payment_address_1'   => isset($this->request->post['address_1']) ? $this->request->post['address_1'] : '',
+                    'payment_address_2'   => isset($this->request->post['address_2']) ? $this->request->post['address_2'] : '',
+                    'payment_city'        => isset($this->request->post['city']) ? $this->request->post['city'] : '',
+                    'payment_postcode'    => isset($this->request->post['postcode']) ? $this->request->post['postcode'] : '',
+                    'payment_country'     => isset($this->request->post['country']) ? $this->request->post['country'] : '',
+                    'payment_zone'        => isset($this->request->post['zone']) ? $this->request->post['zone'] : '',
+                    'total'               => $this->request->post['total'],
+                    'payment_code'        => isset($this->request->post['payment_code']) ? $this->request->post['payment_code'] : '',
+                    'payment_name'        => $this->request->post['payment_name'],
+                    'payment_description' => isset($this->request->post['payment_description']) ? $this->request->post['payment_description'] : '',
+                    'currency_code'       => $this->request->post['currency_code'],
+                    'currency_value'      => $this->request->post['currency_value'],
+                    'comment'             => isset($this->request->post['company']) ? $this->request->post['company'] : '',
+                    'status_id'           => $this->request->post['status_id'],
+                    'date_due'            => $this->request->post['date_due'],
+                    'items'               => $items,
+                    'totals'              => $totals
+                );
+
+                $invoice_id = $this->model_billing_invoice->addInvoice($data);
+
+                $this->model_system_activity->addActivity(sprintf($this->language->get('text_added'), $invoice_id, $this->session->data['username']));
+
+                $json['success'] = true;
+                $json['invoice_id'] = $invoice_id;
             }
         }
 
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
+    }
+
+    public function edit() {
+        $this->load->language('api/invoice');
+
+        $json = array();
+
+        $json['success'] = false;
+
+        if (isset($this->request->post['api_key']) && isset($this->session->data['api_key']) && $this->request->post['api_key'] == $this->session->data['api_key']) {
+            $this->load->model('billing/customer');
+            $this->load->model('billing/invoice');
+            $this->load->model('system/activity');
+            $this->load->model('system/status');
+
+            $json = array_merge($json, $this->validate());
+
+            if (empty($this->request->post['invoice_id'])) {
+                $json['error'][] = $this->langauge->get('error_invoice_id');
+            }
+
+            if (empty($json['error'])) {
+                $items = array();
+
+                foreach ($this->request->post['items'] as $item) {
+                    $items[] = array(
+                        'title'        => isset($item['title']) ? $item['title'] : '',
+                        'description'  => isset($item['description']) ? $item['description'] : '',
+                        'tax_class_id' => isset($item['tax_class_id']) ? $item['tax_class_id'] : 0,
+                        'quantity'     => isset($item['quantity']) ? $item['quantity'] : 1,
+                        'price'        => isset($item['price']) ? $item['price'] : 0,
+                        'tax'          => isset($item['tax']) ? $item['tax'] : 0,
+                        'discount'     => isset($item['discount']) ? $item['discount'] : 0
+                    );
+                }
+
+                $totals = array();
+
+                foreach ($this->request->post['totals'] as $total) {
+                    $totals[] = array(
+                        'code'       => isset($total['code']) ? $total['code'] : '',
+                        'title'      => isset($total['title']) ? $total['title'] : '',
+                        'value'      => isset($total['value']) ? $total['value'] : 0,
+                        'sort_order' => isset($total['sort_order']) ? $total['sort_order'] : 0,
+                    );
+                }
+
+                $customer_info = $this->model_billing_customer->getCustomerByEmail($this->request->post['email']);
+
+                if (!$customer_info) {
+                    $data = array(
+                        'firstname' => $this->request->post['firstname'],
+                        'lastname'  => $this->request->post['lastname'],
+                        'company'   => isset($this->request->post['company']) ? $this->request->post['company'] : '',
+                        'website'   => isset($this->request->post['website']) ? $this->request->post['website'] : '',
+                        'email'     => $this->request->post['email'],
+                        'password'  => substr(sha1(uniqid(mt_rand(), true)), 0, 10)
+                    );
+
+                    $this->model_billing_customer->addCustomer($data);
+
+                    $customer_info = $this->model_billing_customer->getCustomerByEmail($this->request->post['email']);
+                }
+
+                $data = array(
+                    'invoice_id'          => $this->request->post['invoice_id'],
+                    'recurring_id'        => '',
+                    'customer_id'         => $customer_info['customer_id'],
+                    'firstname'           => $customer_info['firstname'],
+                    'lastname'            => $customer_info['lastname'],
+                    'company'             => $customer_info['company'],
+                    'website'             => $customer_info['website'],
+                    'email'               => $customer_info['email'],
+                    'payment_firstname'   => $this->request->post['firstname'],
+                    'payment_lastname'    => $this->request->post['lastname'],
+                    'payment_company'     => isset($this->request->post['company']) ? $this->request->post['company'] : '',
+                    'payment_address_1'   => isset($this->request->post['address_1']) ? $this->request->post['address_1'] : '',
+                    'payment_address_2'   => isset($this->request->post['address_2']) ? $this->request->post['address_2'] : '',
+                    'payment_city'        => isset($this->request->post['city']) ? $this->request->post['city'] : '',
+                    'payment_postcode'    => isset($this->request->post['postcode']) ? $this->request->post['postcode'] : '',
+                    'payment_country'     => isset($this->request->post['country']) ? $this->request->post['country'] : '',
+                    'payment_zone'        => isset($this->request->post['zone']) ? $this->request->post['zone'] : '',
+                    'total'               => $this->request->post['total'],
+                    'payment_code'        => isset($this->request->post['payment_code']) ? $this->request->post['payment_code'] : '',
+                    'payment_name'        => $this->request->post['payment_name'],
+                    'payment_description' => isset($this->request->post['payment_description']) ? $this->request->post['payment_description'] : '',
+                    'currency_code'       => $this->request->post['currency_code'],
+                    'currency_value'      => $this->request->post['currency_value'],
+                    'comment'             => isset($this->request->post['company']) ? $this->request->post['company'] : '',
+                    'status_id'           => $this->request->post['status_id'],
+                    'date_due'            => $this->request->post['date_due'],
+                    'items'               => $items,
+                    'totals'              => $totals
+                );
+
+                $this->model_billing_invoice->editInvoice($data);
+
+                $this->model_system_activity->addActivity(sprintf($this->language->get('text_edited'), $this->request->post['invoice_id'], $this->session->data['username']));
+
+                $json['success'] = true;
+                $json['invoice_id'] = $invoice_id;
+            }
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    protected function validate() {
+        $json = array();
+
+        if (!isset($this->request->post['email']) || (utf8_strlen($this->request->post['email']) > 96) || !preg_match('/^[^\@]+@.*\.[a-z]{2,6}$/i', $this->request->post['email'])) {
+            $json['error'][] = $this->language->get('error_email');
+        }
+
+        if (!isset($this->request->post['firstname']) || (utf8_strlen($this->request->post['firstname']) < 1) || (utf8_strlen($this->request->post['firstname']) > 32)) {
+            $json['error'][] = $this->language->get('error_firstname');
+        }
+
+        if (!isset($this->request->post['lastname']) || (utf8_strlen($this->request->post['lastname']) < 1) || (utf8_strlen($this->request->post['lastname']) > 32)) {
+            $json['error'][] = $this->language->get('error_lastname');
+        }
+
+        if (!isset($this->request->post['payment_name'])) {
+            $json['error'][] = $this->language->get('error_payment_name');
+        }
+
+        if (!isset($this->request->post['currency_code']) || !$this->currency->has($this->request->post['currency_code'])) {
+            $json['error'][] = $this->language->get('error_currency_code');
+        }
+
+        if (!isset($this->request->post['currency_value']) || $this->request->post['currency_code'] < 0) {
+            $json['error'][] = $this->language->get('error_currency_value');
+        }
+
+        if (!isset($this->request->post['status_id'])) {
+            $json['error'][] = $this->language->get('error_status');
+        }
+
+        if (!isset($this->request->post['date_due'])) {
+            $json['error'][] = $this->language->get('error_date_due');
+        }
+
+        $order_total = 0;
+
+        if (!isset($this->request->post['items']) || !is_array($this->request->post['items'])) {
+            $json['error'][] = $this->language->get('error_items');
+        } else {
+            foreach ($this->request->post['items'] as $item) {
+                $order_total += isset($item['tax']) ? $item['tax'] : 0;
+
+                $order_total += (isset($item['price']) && isset($item['quantity']) && isset($item['discount'])) ? (((float)$item['price'] - (float)$item['discount']) * (int)$item['quantity']) : 0;
+            }
+        }
+
+        if (!isset($this->request->post['totals']) || !is_array($this->request->post['totals'])) {
+            $json['error'][] = $this->language->get('error_totals');
+        }
+
+        if (!isset($this->request->post['total']) || round($this->request->post['total'], 4) != round($order_total, 4)) {
+            $json['error'][] = $this->language->get('error_total');
+        }
+
+        return $json;
     }
 }
