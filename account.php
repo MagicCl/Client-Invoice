@@ -1,48 +1,123 @@
 <?php
-// Heading
-$_['heading_title']					= 'Accounts';
+class ModelAccountingAccount extends Model {
+    public function addAccount($data) {
+        $this->db->query("INSERT INTO " . DB_PREFIX . "account SET account_id = '" . (int)$data['account_id'] . "', name = '" . $this->db->escape($data['name']) . "', description = '" . $this->db->escape($data['description']) . "', type = '" . $this->db->escape($data['type']) . "', parent_id = '" . (int)$data['parent_id'] . "', status = '" . (int)$data['status'] . "'");
 
-// Column
-$_['column_account_id']				= 'Account ID';
-$_['column_name']					= 'Name';
-$_['column_description']			= 'Description';
-$_['column_type']					= 'Type';
-$_['column_parent']					= 'Parent Account';
-$_['column_status']					= 'Status';
-$_['column_action']					= 'Action';
+        $this->cache->delete('account');
+    }
 
-// Entry
-$_['entry_account_id']				= 'Account ID';
-$_['entry_name']					= 'Name';
-$_['entry_description']				= 'Description';
-$_['entry_type']					= 'Type';
-$_['entry_parent']					= 'Parent Account';
-$_['entry_status']					= 'Status';
+    public function editAccount($account_id, $data) {
+        $this->db->query("UPDATE " . DB_PREFIX . "account SET account_id = '" . (int)$data['account_id'] . "', name = '" . $this->db->escape($data['name']) . "', description = '" . $this->db->escape($data['description']) . "', type = '" . $this->db->escape($data['type']) . "', parent_id = '" . (int)$data['parent_id'] . "', status = '" . (int)$data['status'] . "' WHERE account_id = '" . (int)$account_id . "'");
 
-// Text
-$_['text_no_results']				= 'There is no account to list.';
-$_['text_success']					= 'You have successfully modified accounts.';
-$_['text_assets']					= 'Assets';
-$_['text_equity']					= 'Equity';
-$_['text_expenses']					= 'Expenses';
-$_['text_liabilities']				= 'Liabilities';
-$_['text_revenue']					= 'Revenue';
-$_['text_current_asset']			= 'Current Asset';
-$_['text_fixed_asset']				= 'Fixed Asset';
-$_['text_non_current_asset']		= 'Non-current Asset';
-$_['text_prepayment']				= 'Prepayment';
-$_['text_depreciation']				= 'Depreciation';
-$_['text_direct_cost']				= 'Direct Cost';
-$_['text_expense']					= 'Expense';
-$_['text_overhead']					= 'Overhead';
-$_['text_current_liability']		= 'Current Liability';
-$_['text_liability']				= 'Liability';
-$_['text_non_current_liability']	= 'Non-current Liability';
-$_['text_other_income']				= 'Other Income';
-$_['text_sale']						= 'Sales';
+        $this->cache->delete('account');
+    }
 
-// Error
-$_['error_permission']				= 'You do not have permission to modify accounts.';
-$_['error_account_id']				= 'Account ID must be unique.';
-$_['error_name']					= 'Name must be between 3 and 32 characters.';
-$_['error_parent']					= 'Parent must not be itself.';
+    public function deleteAccount($account_id) {
+        $this->db->query("DELETE FROM " . DB_PREFIX . "account WHERE account_id = '" . (int)$account_id . "'");
+
+        $this->cache->delete('account');
+    }
+
+    public function getAccount($account_id) {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "account WHERE account_id = '" . (int)$account_id . "'");
+
+        return $query->row;
+    }
+
+    public function getAccounts($data = array()) {
+        if ($data) {
+            $sql = "SELECT * FROM " . DB_PREFIX . "account";
+
+            $implode = array();
+
+            if (isset($data['filter_type'])) {
+                $implode[] = "type = '" . $this->db->escape($data['filter_type']) . "'";
+            }
+
+            if (isset($data['filter_parent_id'])) {
+                $implode[] = "parent_id = '" . (int)$data['filter_parent_id'] . "'";
+            }
+
+            if ($implode) {
+                $sql .= " WHERE " . implode(" AND ", $implode);
+            }
+
+            $sort_data = array(
+                'account_id',
+                'name',
+                'description',
+                'type',
+                'parent_id',
+                'status'
+            );
+
+            if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
+                if ($data['sort'] == 'account_id') {
+                    $sql .= " ORDER BY RPAD(account_id, 15, '0')";
+                } else {
+                    $sql .= " ORDER BY " . $data['sort'];
+                }
+            } else {
+                $sql .= " ORDER BY name";
+            }
+
+            if (isset($data['order']) && ($data['order'] == 'DESC')) {
+                $sql .= " DESC";
+            } else {
+                $sql .= " ASC";
+            }
+
+            if (isset($data['start']) && isset($data['limit'])) {
+                if ($data['start'] < 0) {
+                    $data['start'] = 0;
+                }
+
+                if ($data['limit'] < 1) {
+                    $data['limit'] = 20;
+                }
+
+                $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+            }
+
+            $query = $this->db->query($sql);
+
+            return $query->rows;
+        } else {
+            $account_data = $this->cache->get('account');
+
+            if (!$account_data) {
+                $account_data = array();
+
+                $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "account WHERE parent_id = '0' ORDER BY RPAD(account_id, 15, '0')");
+
+                foreach ($query->rows as $result) {
+                    $account_data[] = array(
+                        'account_id'        => $result['account_id'],
+                        'name'              => $result['name'],
+                        'description'       => $result['description'],
+                        'type'              => $result['type'],
+                        'parent_id'         => $result['parent_id'],
+                        'status'            => $result['status'],
+                        'retained_earnings' => $result['retained_earnings']
+                    );
+                }
+
+                $this->cache->set('account', $account_data);
+            }
+
+            return $account_data;
+        }
+    }
+
+    public function getTotalAccounts() {
+        $query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "account");
+
+        return $query->row['total'];
+    }
+
+    public function getAccountsByType($types) {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "account WHERE type IN ('" . implode('\',\'', $types) . "')");
+
+        return $query->rows;
+    }
+}
