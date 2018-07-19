@@ -12,25 +12,25 @@
 <div class="panel panel-default">
   <div class="panel-heading">
     <div class="pull-right">
-      <button type="submit" form="form-total" title="<?php echo $button_save; ?>" data-toggle="tooltip" class="btn btn-success"><i class="fa fa-save"></i></button>
+      <button type="submit" form="form-tax" title="<?php echo $button_save; ?>" data-toggle="tooltip" class="btn btn-success"><i class="fa fa-save"></i></button>
       <a href="<?php echo $cancel; ?>" title="<?php echo $button_cancel; ?>" data-toggle="tooltip" class="btn btn-danger"><i class="fa fa-times"></i></a>
     </div>
     <h1 class="panel-title"><i class="fa fa-pencil-square fa-lg"></i> <?php echo $heading_title; ?></h1>
   </div>
   <div class="panel-body">
-    <form method="post" action="<?php echo $action; ?>" id="form-total" class="form-horizontal">
+    <form method="post" action="<?php echo $action; ?>" id="form-tax" class="form-horizontal">
       <div class="form-group">
         <label class="col-sm-2 control-label" for="input-status"><?php echo $entry_status; ?></label>
-        <div class="col-sm-10"><select name="total_status" id="input-status" class="form-control">
-            <option value="1"<?php echo $total_status ? ' selected="selected"' : ''; ?>><?php echo $text_enabled; ?></option>
-            <option value="0"<?php echo $total_status ? '' : ' selected="selected"'; ?>><?php echo $text_disabled; ?></option>
+        <div class="col-sm-10"><select name="tax_status" id="input-status" class="form-control">
+            <option value="1"<?php echo $tax_status ? ' selected="selected"' : ''; ?>><?php echo $text_enabled; ?></option>
+            <option value="0"<?php echo $tax_status ? '' : ' selected="selected"'; ?>><?php echo $text_disabled; ?></option>
           </select>
         </div>
       </div>
       <div class="form-group">
         <label class="col-sm-2 control-label" for="input-sort-order"><?php echo $entry_sort_order; ?></label>
         <div class="col-sm-10">
-          <input type="text" name="total_sort_order" value="<?php echo $total_sort_order; ?>" id="input-sort-order" class="form-control" placeholder="<?php echo $entry_sort_order; ?>" />
+          <input type="text" name="tax_sort_order" value="<?php echo $tax_sort_order; ?>" id="input-sort-order" class="form-control" placeholder="<?php echo $entry_sort_order; ?>" />
         </div>
       </div>
     </form>
