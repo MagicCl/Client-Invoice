@@ -1,29 +1,130 @@
 <?php
-// Heading
-$_['heading_title']			= 'Articles';
+class ModelContentArticle extends Model {
+    public function addArticle($data) {
+        $this->db->query("INSERT INTO " . DB_PREFIX . "article SET top = '" . (int)$data['top'] . "', parent_id = '" . (int)$data['parent_id'] . "', sort_order = '" . (int)$data['sort_order'] . "', status= '" . (int)$data['status'] . "'");
 
-// Column
-$_['column_title']			= 'Title';
-$_['column_top']			= 'Top';
-$_['column_sort_order']		= 'Sort Order';
-$_['column_status']			= 'Status';
-$_['column_action']			= 'Action';
+        $article_id = $this->db->getLastId();
 
-// Entry
-$_['entry_title']			= 'Title';
-$_['entry_description']		= 'Description';
-$_['entry_top']				= 'Top';
-$_['entry_parent']			= 'Parent';
-$_['entry_sort_order']		= 'Sort Order';
-$_['entry_url_alias']		= 'URL Alias';
-$_['entry_status']			= 'Status';
+        foreach ($data['description'] as $language_id => $value) {
+            $this->db->query("INSERT INTO " . DB_PREFIX . "article_description SET article_id = '" . (int)$article_id . "', language_id = '" . (int)$language_id . "', title= '" . $this->db->escape($value['title']) . "', description = '" . $this->db->escape($value['description']) . "'");
+        }
 
-// Text
-$_['text_no_results']		= 'There is no article to list.';
-$_['text_success']			= 'You have successfully modified articles.';
+        if ($data['url_alias']) {
+            $this->load->model('system/url_alias');
 
-// Error
-$_['error_permission']		= 'You do not have permission to modify articles.';
-$_['error_title']			= 'Title must be between 3 and 64 characters.';
-$_['error_description']		= 'Description must be more than 3 characters.';
-$_['error_url_alias']		= 'URL Alias has to be unique across the system.';
+            $this->model_system_url_alias->addUrlAlias('article_id=' . $article_id, $data['url_alias']);
+        }
+
+        $this->cache->delete('article');
+    }
+
+    public function editArticle($article_id, $data) {
+        $this->db->query("UPDATE " . DB_PREFIX . "article SET top = '" . (int)$data['top'] . "', parent_id = '" . (int)$data['parent_id'] . "', sort_order = '" . (int)$data['sort_order'] . "', status= '" . (int)$data['status'] . "' WHERE article_id = '" . (int)$article_id . "'");
+
+        $this->db->query("DELETE FROM " . DB_PREFIX . "article_description WHERE article_id = '" . (int)$article_id . "'");
+
+        foreach ($data['description'] as $language_id => $value) {
+            $this->db->query("INSERT INTO " . DB_PREFIX . "article_description SET article_id = '" . (int)$article_id . "', language_id = '" . (int)$language_id . "', title= '" . $this->db->escape($value['title']) . "', description = '" . $this->db->escape($value['description']) . "'");
+        }
+
+        if ($data['url_alias']) {
+            $this->load->model('system/url_alias');
+
+            $this->model_system_url_alias->addUrlAlias('article_id=' . $article_id, $data['url_alias']);
+        }
+
+        $this->cache->delete('article');
+    }
+
+    public function deleteArticle($article_id) {
+        $this->db->query("DELETE FROM " . DB_PREFIX . "article WHERE article_id = '" . (int)$article_id . "'");
+        $this->db->query("DELETE FROM " . DB_PREFIX . "article_description WHERE article_id = '" . (int)$article_id . "'");
+
+        $this->cache->delete('article');
+    }
+
+    public function getArticle($article_id) {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "article WHERE article_id = '" . (int)$article_id . "'");
+
+        $description_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "article_description WHERE article_id = '" . (int)$article_id . "'");
+
+        $description = array();
+
+        foreach ($description_query->rows as $result) {
+            $description[$result['language_id']] = array(
+                'title'       => $result['title'],
+                'description' => $result['description']
+            );
+        }
+
+        return array(
+            'article_id'  => $query->row['article_id'],
+            'top'         => $query->row['top'],
+            'parent_id'   => $query->row['parent_id'],
+            'sort_order'  => $query->row['sort_order'],
+            'status'      => $query->row['status'],
+            'description' => $description
+        );
+    }
+
+    public function getArticles($data = array()) {
+        if ($data) {
+            $sql = "SELECT * FROM " . DB_PREFIX . "article a LEFT JOIN " . DB_PREFIX . "article_description ad ON ad.article_id = a.article_id WHERE ad.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+
+            $sort_data = array(
+                'title',
+                'top',
+                'sort_order',
+                'status'
+            );
+
+            if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
+                $sql .= " ORDER BY " . $data['sort'];
+            } else {
+                $sql .= " ORDER BY title";
+            }
+
+            if (isset($data['order']) && ($data['order'] == 'DESC')) {
+                $sql .= " DESC";
+            } else {
+                $sql .= " ASC";
+            }
+
+            if (isset($data['start']) && isset($data['limit'])) {
+                if ($data['start'] < 0) {
+                    $data['start'] = 0;
+                }
+
+                if ($data['limit'] < 1) {
+                    $data['limit'] = 20;
+                }
+
+                $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+            }
+
+            $query = $this->db->query($sql);
+
+            $article_data = $query->rows;
+        } else {
+            $article_data = $this->cache->get('article.' . $this->config->get('config_language_id'));
+
+            if (!$article_data) {
+                $article_data = array();
+
+                $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "article a LEFT JOIN " . DB_PREFIX . "article_description ad ON ad.article_id = a.article_id WHERE ad.language_id = '" . (int)$this->config->get('config_language_id') . "' ORDER BY ad.title");
+
+                $article_data = $query->rows;
+
+                $this->cache->set('article.' . $this->config->get('config_language_id'), $article_data);
+            }
+        }
+
+        return $article_data;
+    }
+
+    public function getTotalArticles() {
+        $query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "article");
+
+        return $query->row['total'];
+    }
+}
