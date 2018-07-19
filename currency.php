@@ -1,144 +1,188 @@
 <?php
-class ModelAccountingCurrency extends Model {
-    public function addCurrency($data) {
-        $this->db->query("INSERT INTO " . DB_PREFIX . "currency SET title = '" . $this->db->escape($data['title']) . "', code = '" . $this->db->escape($data['code']) . "', symbol_left = '" . $this->db->escape($data['symbol_left']) . "', symbol_right = '" . $this->db->escape($data['symbol_right']) . "', decimal_place = '" . (int)$data['decimal_place'] . "', value = '" . (float)$data['value'] . "', status = '" . (int)$data['status'] . "', date_modified = NOW()");
+class Currency {
+    private $code;
+    private $currencies = array();
 
-        $this->cache->delete('currency');
-    }
+    public function __construct($registry) {
+        $this->config = $registry->get('config');
+        $this->db = $registry->get('db');
+        $this->language = $registry->get('language');
+        $this->request = $registry->get('request');
+        $this->session = $registry->get('session');
 
-    public function editCurrency($currency_id, $data) {
-        $this->db->query("UPDATE " . DB_PREFIX . "currency SET title = '" . $this->db->escape($data['title']) . "', code = '" . $this->db->escape($data['code']) . "', symbol_left = '" . $this->db->escape($data['symbol_left']) . "', symbol_right = '" . $this->db->escape($data['symbol_right']) . "', decimal_place = '" . (int)$data['decimal_place'] . "', value = '" . (float)$data['value'] . "', status = '" . (int)$data['status'] . "', date_modified = NOW() WHERE currency_id = '" . (int)$currency_id . "'");
-
-        $this->cache->delete('currency');
-    }
-
-    public function deleteCurrency($currency_id) {
-        $this->db->query("DELETE FROM " . DB_PREFIX . "currency WHERE currency_id = '" . (int)$currency_id . "'");
-
-        $this->cache->delete('currency');
-    }
-
-    public function getCurrency($currency_id) {
-        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency WHERE currency_id = '" . (int)$currency_id . "'");
-
-        return $query->row;
-    }
-
-    public function getCurrencyByCode($code) {
-        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency WHERE code = '" . $this->db->escape($code) . "'");
-
-        return $query->row;
-    }
-
-    public function getCurrencies($data = array()) {
-        if ($data) {
-            $sql = "SELECT * FROM " . DB_PREFIX . "currency";
-
-            $sort_data = array(
-                'title',
-                'code',
-                'value',
-                'status',
-                'date_modified'
-            );
-
-            if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
-                $sql .= " ORDER BY " . $data['sort'];
-            } else {
-                $sql .= " ORDER BY title";
-            }
-
-            if (isset($data['order']) && ($data['order'] == 'DESC')) {
-                $sql .= " DESC";
-            } else {
-                $sql .= " ASC";
-            }
-
-            if (isset($data['start']) && isset($data['limit'])) {
-                if ($data['start'] < 0) {
-                    $data['start'] = 0;
-                }
-
-                if ($data['limit'] < 1) {
-                    $data['limit'] = 20;
-                }
-
-                $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
-            }
-
-            $query = $this->db->query($sql);
-
-            return $query->rows;
-        } else {
-            $currency_data = $this->cache->get('currency');
-
-            if (!$currency_data) {
-                $currency_data = array();
-
-                $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency ORDER BY title");
-
-                foreach ($query->rows as $result) {
-                    $currency_data[$result['code']] = array(
-                        'currency_id'   => $result['currency_id'],
-                        'title'         => $result['title'],
-                        'code'          => $result['code'],
-                        'symbol_left'   => $result['symbol_left'],
-                        'symbol_right'  => $result['symbol_right'],
-                        'decimal_place' => $result['decimal_place'],
-                        'value'         => $result['value'],
-                        'status'        => $result['status'],
-                        'date_modified' => $result['date_modified']
-                    );
-                }
-
-                $this->cache->set('currency', $currency_data);
-            }
-
-            return $currency_data;
-        }
-    }
-
-    public function getTotalCurrencies() {
-        $query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "currency");
-
-        return $query->row['total'];
-    }
-
-    public function updateCurrencies($force = false) {
-        $data = array();
-
-        if ($force) {
-            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency WHERE code != '" . $this->db->escape($this->config->get('config_currency')) . "'");
-        } else {
-            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency WHERE code != '" . $this->db->escape($this->config->get('config_currency')) . "' AND date_modified < DATE_SUB(NOW(), INTERVAL 1 DAY)");
-        }
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency");
 
         foreach ($query->rows as $result) {
-            $data[] = $this->config->get('config_currency') . $result['code'] . '=X';
+            $this->currencies[$result['code']] = array(
+                'currency_id'   => $result['currency_id'],
+                'title'         => $result['title'],
+                'symbol_left'   => $result['symbol_left'],
+                'symbol_right'  => $result['symbol_right'],
+                'decimal_place' => $result['decimal_place'],
+                'value'         => $result['value']
+            );
         }
 
-        $curl = curl_init();
+        if (isset($this->request->get['currency']) && (array_key_exists($this->request->get['currency'], $this->currencies))) {
+            $this->set($this->request->get['currency']);
+        } elseif ((isset($this->session->data['currency'])) && (array_key_exists($this->session->data['currency'], $this->currencies))) {
+            $this->set($this->session->data['currency']);
+        } elseif ((isset($this->request->cookie['currency'])) && (array_key_exists($this->request->cookie['currency'], $this->currencies))) {
+            $this->set($this->request->cookie['currency']);
+        } else {
+            $this->set($this->config->get('config_currency'));
+        }
+    }
 
-        curl_setopt($curl, CURLOPT_URL, 'http://download.finance.yahoo.com/d/quotes.csv?s=' . implode(',', $data) . '&f=sl1&e=.csv');
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+    public function set($currency) {
+        $this->code = $currency;
 
-        $content = curl_exec($curl);
-
-        curl_close($curl);
-
-        $lines = explode("\n", trim($content));
-
-        foreach ($lines as $line) {
-            $currency = utf8_substr($line, 4, 3);
-            $value = utf8_substr($line, 11, 6);
-
-            if ((float)$value) {
-                $this->db->query("UPDATE " . DB_PREFIX . "currency SET value = '" . (float)$value . "', date_modified = '" . $this->db->escape(date('Y-m-d H:i:s')) . "' WHERE code = '" . $this->db->escape($currency) . "'");
-            }
+        if (!isset($this->session->data['currency']) || ($this->session->data['currency'] != $currency)) {
+            $this->session->data['currency'] = $currency;
         }
 
-        $this->db->query("UPDATE " . DB_PREFIX . "currency SET value = '1.00000', date_modified = '" . $this->db->escape(date('Y-m-d H:i:s')) . "' WHERE code = '" . $this->db->escape($this->config->get('config_currency')) . "'");
+        if (!isset($this->request->cookie['currency']) || ($this->request->cookie['currency'] != $currency)) {
+            setcookie('currency', $currency, time() + 60 * 60 * 24 * 30, '/', $this->request->server['HTTP_HOST']);
+        }
+    }
 
-        $this->cache->delete('currency');
+    public function format($number, $currency = '', $value = '', $format = true) {
+        if ($currency && $this->has($currency)) {
+            $symbol_left = $this->currencies[$currency]['symbol_left'];
+            $symbol_right = $this->currencies[$currency]['symbol_right'];
+            $decimal_place = $this->currencies[$currency]['decimal_place'];
+        } else {
+            $symbol_left = $this->currencies[$this->code]['symbol_left'];
+            $symbol_right = $this->currencies[$this->code]['symbol_right'];
+            $decimal_place = $this->currencies[$this->code]['decimal_place'];
+
+            $currency = $this->code;
+        }
+
+        if ($value) {
+            $value = $value;
+        } else {
+            $value = $this->currencies[$currency]['value'];
+        }
+
+        if ($value) {
+            $value = (float)$number * $value;
+        } else {
+            $value = $number;
+        }
+
+        $string = '';
+
+        $negative = false;
+
+        if ($value < 0) {
+            $value = $value * -1;
+
+            $negative = true;
+        }
+
+        if (($symbol_left) && ($format)) {
+            $string .= $symbol_left;
+        }
+
+        if ($format) {
+            $decimal_point = $this->language->get('decimal_point');
+        } else {
+            $decimal_point = '.';
+        }
+
+        if ($format) {
+            $thousand_point = $this->language->get('thousand_point');
+        } else {
+            $thousand_point = '';
+        }
+
+        $string .= number_format(round($value, (int)$decimal_place), (int)$decimal_place, $decimal_point, $thousand_point);
+
+        if (($symbol_right) && ($format)) {
+            $string .= $symbol_right;
+        }
+
+        if ($negative) {
+            $string = '(' . $string . ')';
+        }
+
+        return $string;
+    }
+
+    public function convert($value, $from, $to) {
+        if (isset($this->currencies[$from])) {
+            $from = $this->currencies[$from]['value'];
+        } else {
+            $from = 0;
+        }
+
+        if (isset($this->currencies[$to])) {
+            $to = $this->currencies[$to]['value'];
+        } else {
+            $to = 0;
+        }
+
+        return $value * ($to / $from);
+    }
+
+    public function getId($currency = '') {
+        if (!$currency) {
+            return $this->currencies[$this->code]['currency_id'];
+        } elseif ($currency && isset($this->currencies[$currency])) {
+            return $this->currencies[$currency]['currency_id'];
+        } else {
+            return 0;
+        }
+    }
+
+    public function getSymbolLeft($currency = '') {
+        if (!$currency) {
+            return $this->currencies[$this->code]['symbol_left'];
+        } elseif ($currency && isset($this->currencies[$currency])) {
+            return $this->currencies[$currency]['symbol_left'];
+        } else {
+            return '';
+        }
+    }
+
+    public function getSymbolRight($currency = '') {
+        if (!$currency) {
+            return $this->currencies[$this->code]['symbol_right'];
+        } elseif ($currency && isset($this->currencies[$currency])) {
+            return $this->currencies[$currency]['symbol_right'];
+        } else {
+            return '';
+        }
+    }
+
+    public function getDecimalPlace($currency = '') {
+        if (!$currency) {
+            return $this->currencies[$this->code]['decimal_place'];
+        } elseif ($currency && isset($this->currencies[$currency])) {
+            return $this->currencies[$currency]['decimal_place'];
+        } else {
+            return 0;
+        }
+    }
+
+    public function getCode() {
+        return $this->code;
+    }
+
+    public function getValue($currency = '') {
+        if (!$currency) {
+            return $this->currencies[$this->code]['value'];
+        } elseif ($currency && isset($this->currencies[$currency])) {
+            return $this->currencies[$currency]['value'];
+        } else {
+            return 0;
+        }
+    }
+
+    public function has($currency) {
+        return isset($this->currencies[$currency]);
     }
 }
+
+?>

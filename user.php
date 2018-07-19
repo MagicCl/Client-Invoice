@@ -1,108 +1,103 @@
 <?php
-class ModelSystemUser extends Model {
-    public function addUser($data) {
-        $this->db->query("INSERT INTO `" . DB_PREFIX . "user` SET user_group_id = '" . (int)$data['user_group_id'] . "', `key` = '" . $this->db->escape($data['key']) . "', secret = '" . $this->db->escape($data['secret']) . "', email = '" . $this->db->escape($data['email']) . "', username = '" . $this->db->escape($data['username']) . "', salt = '" . $this->db->escape($salt = substr(md5(uniqid(rand(), true)), 0, 9)) . "', password = '" . $this->db->escape(sha1($salt . sha1($salt . sha1($data['password'])))) . "', status = '" . (int)$data['status'] . "', date_added = NOW(), date_modified = NOW()");
-    }
+class User {
+    private $user_id;
+    private $username;
+    private $email;
+    private $key;
+    private $secret;
+    private $permission = array();
 
-    public function editUser($user_id, $data) {
-        $this->db->query("UPDATE `" . DB_PREFIX . "user` SET user_group_id = '" . (int)$data['user_group_id'] . "', `key` = '" . $this->db->escape($data['key']) . "', secret = '" . $this->db->escape($data['secret']) . "', email = '" . $this->db->escape($data['email']) . "', username = '" . $this->db->escape($data['username']) . "', status = '" . (int)$data['status'] . "', date_modified = NOW() WHERE user_id = '" . (int)$user_id . "'");
+    public function __construct($registry) {
+        $this->db = $registry->get('db');
+        $this->request = $registry->get('request');
+        $this->session = $registry->get('session');
 
-        if ($data['password']) {
-            $this->db->query("UPDATE `" . DB_PREFIX . "user` SET salt = '" . $this->db->escape($salt = substr(md5(uniqid(rand(), true)), 0, 9)) . "', password = '" . $this->db->escape(sha1($salt . sha1($salt . sha1($data['password'])))) . "' WHERE user_id = '" . (int)$user_id . "'");
+        if (isset($this->session->data['user_id'])) {
+            $user_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "user WHERE user_id = '" . (int)$this->session->data['user_id'] . "' AND status = '1'");
+
+            if ($user_query->num_rows) {
+                $this->user_id = $user_query->row['user_id'];
+                $this->username = $user_query->row['username'];
+                $this->email = $user_query->row['email'];
+                $this->key = $user_query->row['key'];
+                $this->secret = $user_query->row['secret'];
+
+                $this->db->query("UPDATE " . DB_PREFIX . "user SET ip = '" . $this->db->escape($this->request->server['REMOTE_ADDR']) . "' WHERE user_id = '" . (int)$this->session->data['user_id'] . "'");
+
+                $user_group_query = $this->db->query("SELECT permission FROM " . DB_PREFIX . "user_group WHERE user_group_id = '" . (int)$user_query->row['user_group_id'] . "'");
+
+                $permissions = unserialize($user_group_query->row['permission']);
+
+                if (is_array($permissions)) {
+                    foreach ($permissions as $key => $value) {
+                        $this->permission[$key] = $value;
+                    }
+                }
+            } else {
+                $this->logout();
+            }
         }
     }
 
-    public function editPassword($user_id, $password) {
-        $this->db->query("UPDATE `" . DB_PREFIX . "user` SET salt = '" . $this->db->escape($salt = substr(md5(uniqid(rand(), true)), 0, 9)) . "', password = '" . $this->db->escape(sha1($salt . sha1($salt . sha1($password)))) . "', code = '' WHERE user_id = '" . (int)$user_id . "'");
-    }
+    public function login($username, $password) {
+        $user_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "user WHERE username = '" . $this->db->escape($username) . "' AND password = SHA1(CONCAT(salt, SHA1(CONCAT(salt, SHA1('" . $this->db->escape($password) . "'))))) AND status = '1'");
 
-    public function editCode($email, $code, $ip) {
-        $this->db->query("UPDATE `" . DB_PREFIX . "user` SET code = '" . $this->db->escape($code) . "' WHERE LOWER(email) = '" . $this->db->escape(utf8_strtolower($email)) . "'");
+        if ($user_query->num_rows) {
+            $this->session->data['user_id'] = $user_query->row['user_id'];
 
-        $this->load->model('content/email_template');
+            $this->user_id = $user_query->row['user_id'];
+            $this->username = $user_query->row['username'];
+            $this->email = $user_query->row['email'];
+            $this->key = $user_query->row['key'];
+            $this->secret = $user_query->row['secret'];
 
-        $email_data = array(
-            'website_name' => $this->config->get('config_name'),
-            'website_url'  => HTTPS_APPLICATION,
-            'email'        => $email,
-            'reset_link'   => $this->url->link('common/reset', 'code=' . $code, 'SSL'),
-            'ip'           => $ip,
-            'to_email'     => $email
-        );
+            $user_group_query = $this->db->query("SELECT permission FROM " . DB_PREFIX . "user_group WHERE user_group_id = '" . (int)$user_query->row['user_group_id'] . "'");
 
-        $this->model_content_email_template->send($email_data, 'forgotten_password_admin');
-    }
+            $permissions = unserialize($user_group_query->row['permission']);
 
-    public function deleteUser($user_id) {
-        $this->db->query("DELETE FROM `" . DB_PREFIX . "user` WHERE user_id = '" . (int)$user_id . "'");
-    }
-
-    public function getUser($user_id) {
-        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "user WHERE user_id = '" . (int)$user_id . "'");
-
-        return $query->row;
-    }
-
-    public function getUserByCode($code) {
-        $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "user` WHERE code = '" . $this->db->escape($code) . "' AND code != ''");
-
-        return $query->row;
-    }
-
-    public function getUsers($data = array()) {
-        $sql = "SELECT *, name AS user_group FROM `" . DB_PREFIX . "user` u LEFT JOIN " . DB_PREFIX . "user_group ug ON ug.user_group_id = u.user_group_id";
-
-        $sort_data = array(
-            'username',
-            'status',
-            'date_added',
-            'date_modified'
-        );
-
-        if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
-            $sql .= " ORDER BY " . $data['sort'];
-        } else {
-            $sql .= " ORDER BY username";
-        }
-
-        if (isset($data['order']) && ($data['order'] == 'DESC')) {
-            $sql .= " DESC";
-        } else {
-            $sql .= " ASC";
-        }
-
-        if (isset($data['start']) && isset($data['limit'])) {
-            if ($data['start'] < 0) {
-                $data['start'] = 0;
+            if (is_array($permissions)) {
+                foreach ($permissions as $key => $value) {
+                    $this->permission[$key] = $value;
+                }
             }
 
-            if ($data['limit'] < 1) {
-                $data['limit'] = 20;
-            }
-
-            $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+            return true;
+        } else {
+            return false;
         }
-
-        $query = $this->db->query($sql);
-
-        return $query->rows;
     }
 
-    public function getTotalUsers() {
-        $query = $this->db->query("SELECT COUNT(*) AS total FROM `" . DB_PREFIX . "user`");
+    public function logout() {
+        unset($this->session->data['user_id']);
 
-        return $query->row['total'];
+        $this->user_id = '';
+        $this->username = '';
+        $this->email = '';
+        $this->key = '';
+        $this->secret = '';
     }
 
-    public function getTotalUsersByUserGroup($user_group_id) {
-        $query = $this->db->query("SELECT COUNT(*) AS total FROM `" . DB_PREFIX . "user` WHERE user_group_id = '" . (int)$user_group_id . "'");
-
-        return $query->row['total'];
+    public function hasPermission($key, $value) {
+        if (isset($this->permission[$key])) {
+            return in_array($value, $this->permission[$key]);
+        } else {
+            return false;
+        }
     }
 
-    public function getTotalUsersByEmail($email) {
-        $query = $this->db->query("SELECT COUNT(*) AS total FROM `" . DB_PREFIX . "user` WHERE LOWER(email) = '" . $this->db->escape(utf8_strtolower($email)) . "'");
+    public function isLogged() {
+        return $this->user_id;
+    }
 
-        return $query->row['total'];
+    public function getId() {
+        return $this->user_id;
+    }
+
+    public function getUsername() {
+        return $this->username;
+    }
+
+    public function getEmail() {
+        return $this->email;
     }
 }
