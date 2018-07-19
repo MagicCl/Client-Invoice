@@ -1,34 +1,24 @@
 <?php
-class ControllerContentArticle extends Controller {
-    public function index() {
-        $this->load->model('content/article');
+class ModelContentArticle extends Model {
+    public function getArticle($article_id) {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "article a LEFT JOIN " . DB_PREFIX . "article_description ad ON ad.article_id = a.article_id WHERE ad.language_id = '" . (int)$this->config->get('config_language_id') . "' AND a.article_id = '" . (int)$article_id . "' AND status = '1'");
 
-        $article_info = $this->model_content_article->getArticle((int)$this->request->get['article_id']);
+        return $query->row;
+    }
 
-        if ($article_info) {
-            $this->document->setTitle($article_info['title']);
+    public function getArticles($parent_id = 0) {
+        $article_data = $this->cache->get('article.' . $parent_id . '.' . $this->config->get('config_language_id'));
 
-            $this->data['breadcrumbs'] = array();
+        if (!$article_data) {
+            $article_data = array();
 
-            $this->data['breadcrumbs'][] = array(
-                'text' => $this->language->get('text_home'),
-                'href' => $this->url->link('common/home')
-            );
+            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "article a LEFT JOIN " . DB_PREFIX . "article_description ad ON ad.article_id = a.article_id WHERE ad.language_id = '" . (int)$this->config->get('config_language_id') . "' AND parent_id = '" . (int)$parent_id . "' AND status = '1' ORDER BY a.sort_order, ad.title");
 
-            $this->data['breadcrumbs'][] = array(
-                'text' => $article_info['title'],
-                'href' => $this->url->link('content/article', 'article_id=' . $this->request->get['article_id'])
-            );
+            $article_data = $query->rows;
 
-            $this->data['heading_title'] = $article_info['title'];
-            $this->data['description'] = html_entity_decode($article_info['description'], ENT_QUOTES);
-        } else {
-            return new Action('error/not_found');
+            $this->cache->set('article.' . $this->config->get('config_language_id'), $article_data);
         }
 
-        $this->data['header'] = $this->load->controller('common/header');
-        $this->data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->render('content/article.tpl'));
+        return $article_data;
     }
 }
