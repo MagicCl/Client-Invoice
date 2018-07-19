@@ -1,34 +1,77 @@
 <?php
-$_['text_dashboard']			= 'Dashboard';
-$_['text_accounting']			= 'Accounting';
-$_['text_account']				= 'Accounts';
-$_['text_currency'] 			= 'Currencies';
-$_['text_journal']				= 'Journal Entries';
-$_['text_tax'] 					= 'Taxes';
-$_['text_tax_class'] 			= 'Tax Classes';
-$_['text_tax_rate'] 			= 'Tax Rates';
-$_['text_billing']				= 'Billing';
-$_['text_customer']				= 'Customers';
-$_['text_invoice']				= 'Invoices';
-$_['text_recurring']			= 'Recurring Payments';
-$_['text_content']				= 'Content';
-$_['text_article']				= 'Articles';
-$_['text_email_template']		= 'Email Templates';
-$_['text_extension']			= 'Extensions';
-$_['text_payment']				= 'Payments';
-$_['text_total']				= 'Totals';
-$_['text_report']				= 'Reports';
-$_['text_chart_of_accounts']	= 'Chart of Accounts';
-$_['text_sci']					= 'SCI';
-$_['text_sfp']					= 'SFP';
-$_['text_system']				= 'System';
-$_['text_language'] 			= 'Languages';
-$_['text_setting'] 				= 'Settings';
-$_['text_status'] 				= 'Statuses';
-$_['text_log']					= 'Logs';
-$_['text_activity']				= 'Activities';
-$_['text_error'] 				= 'Errors';
-$_['text_user'] 				= 'Users';
-$_['text_user_group'] 			= 'User Groups';
-$_['text_logout']				= 'Logout';
-$_['text_website']				= 'Website';
+class ControllerCommonHeader extends Controller {
+    public function index() {
+        $this->data = $this->load->language('common/header');
+
+        $this->data['title'] = $this->document->getTitle();
+        $this->data['styles'] = $this->document->getStyles();
+        $this->data['scripts'] = $this->document->getScripts();
+        $this->data['links'] = $this->document->getLinks();
+        $this->data['description'] = $this->document->getDescription();
+        $this->data['keywords'] = $this->document->getKeywords();
+        $this->data['google_analytics'] = html_entity_decode($this->config->get('config_google_analytics'), ENT_QUOTES);
+
+        $this->data['name'] = $this->config->get('config_name');
+
+        $this->data['home'] = $this->url->link('common/home');
+
+        if ($this->request->server['HTTPS']) {
+            $this->data['base'] = HTTPS_SERVER;
+        } else {
+            $this->data['base'] = HTTP_SERVER;
+        }
+
+        if ($this->config->get('config_logo')) {
+            $this->data['logo'] = $this->config->get('config_logo');
+        } else {
+            $this->data['logo'] = '';
+        }
+
+        if ($this->config->get('config_icon')) {
+            $this->data['icon'] = $this->config->get('config_icon');
+        } else {
+            $this->data['icon'] = '';
+        }
+
+        $this->load->model('content/article');
+
+        $articles = $this->model_content_article->getArticles();
+
+        $this->data['articles'] = array();
+
+        foreach ($articles as $article) {
+            if ($article['top']) {
+                $children = $this->model_content_article->getArticles($article['article_id']);
+
+                $children_data = array();
+
+                foreach ($children as $child) {
+                    $children_data[] = array(
+                        'title' => $child['title'],
+                        'href'  => $this->url->link('content/article', 'article_id=' . $child['article_id']),
+                    );
+                }
+
+                $this->data['articles'][] = array(
+                    'title'    => $article['title'],
+                    'href'     => $this->url->link('content/article', 'article_id=' . $article['article_id']),
+                    'children' => $children_data
+                );
+            }
+        }
+
+        if ($this->customer->isLogged()) {
+            $this->data['logged'] = true;
+            $this->data['account'] = $this->url->link('account/account', '', 'SSL');
+            $this->data['invoice'] = $this->url->link('account/invoice', '', 'SSL');
+            $this->data['logout'] = $this->url->link('account/logout', '', 'SSL');
+        } else {
+            $this->data['logged'] = false;
+            $this->data['account'] = $this->url->link('account/account', '', 'SSL');
+            $this->data['register'] = $this->config->get('config_registration') ? $this->url->link('account/register', '', 'SSL') : false;
+            $this->data['login'] = $this->url->link('account/login', '', 'SSL');
+        }
+
+        return $this->render('common/header.tpl');
+    }
+}

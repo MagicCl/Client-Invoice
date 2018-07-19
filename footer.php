@@ -1,4 +1,10 @@
 <?php
-// Text
-$_['text_powered']		= '<a href="http://www.logicinvoice.com">Logic Invoice</a> &copy; 2014-%s. All rights reserved.';
-$_['text_version']		= 'Version %s';
+class ControllerCommonFooter extends Controller {
+    public function index() {
+        $this->load->language('common/footer');
+
+       
+
+        return $this->render('common/footer.tpl');
+    }
+}
