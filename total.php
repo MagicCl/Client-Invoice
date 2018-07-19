@@ -1,64 +1,16 @@
 <?php
-class ControllerTotalTotal extends Controller {
-    private $error = array();
+// Heading
+$_['heading_title']		= 'Totals';
 
-    public function index() {
-        $this->data = $this->load->language('total/total');
+// Column
+$_['column_name']		= 'Name';
+$_['column_status']		= 'Status';
+$_['column_sort_order']	= 'Sort Order';
+$_['column_action']		= 'Action';
 
-        $this->document->setTitle($this->language->get('heading_title'));
+// Text
+$_['text_no_results']	= 'There is no total to list.';
+$_['text_success']		= 'You have successfully modified totals.';
 
-        $this->data['breadcrumbs'] = array();
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_home'),
-            'href' => $this->url->link('common/dashboard', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_totals'),
-            'href' => $this->url->link('extension/total', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('heading_title'),
-            'href' => $this->url->link('total/total', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->load->model('system/setting');
-
-        if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
-            $this->model_system_setting->editSetting('total', $this->request->post);
-
-            $this->session->data['success'] = $this->language->get('text_success');
-
-            $this->response->redirect($this->url->link('extension/total', 'token=' . $this->session->data['token'], 'SSL'));
-        }
-
-        $this->data['action'] = $this->url->link('total/total', 'token=' . $this->session->data['token'], 'SSL');
-        $this->data['cancel'] = $this->url->link('extension/total', 'token=' . $this->session->data['token'], 'SSL');
-
-        $this->data['error_warning'] = $this->build->data('warning', $this->error);
-
-        $setting = $this->model_system_setting->getSetting('total');
-
-        $this->data['total_status'] = $this->build->data('total_status', $this->request->post, $setting);
-        $this->data['total_sort_order'] = $this->build->data('total_sort_order', $this->request->post, $setting);
-
-        $this->data['header'] = $this->load->controller('common/header');
-        $this->data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->render('total/total.tpl'));
-    }
-
-    protected function validate() {
-        if (!$this->user->hasPermission('modify', 'total/total')) {
-            $this->error['warning'] = $this->language->get('error_permission');
-        }
-
-        if (!$this->error) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-}
+// Error
+$_['error_permission']	= 'You do not have permission to modify total.';
