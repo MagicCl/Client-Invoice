@@ -1,14 +1,19 @@
 <?php
-// Heading
-$_['heading_title']				= 'Tax';
+class ModelTotalTax extends Model {
+    public function getTotal(&$total_data, &$total, &$taxes) {
+        $this->load->language('total/tax');
 
-// Entry
-$_['entry_status']				= 'Status';
-$_['entry_sort_order']			= 'Sort Order';
+        foreach ($taxes as $tax) {
+            if ($tax['value'] > 0) {
+                $total_data[] = array(
+                    'code'       => 'tax',
+                    'title'      => $tax['name'],
+                    'value'      => $tax['value'],
+                    'sort_order' => $this->config->get('tax_sort_order')
+                );
 
-// Text
-$_['text_totals']				= 'Totals';
-$_['text_success']				= 'You have successfully modified tax.';
-
-// Error
-$_['error_permission']			= 'You do not have permission to modify tax.';
+                $total += $tax['value'];
+            }
+        }
+    }
+}

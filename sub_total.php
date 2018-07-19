@@ -1,14 +1,13 @@
 <?php
-// Heading
-$_['heading_title']				= 'Sub-Total';
+class ModelTotalSubTotal extends Model {
+    public function getTotal(&$total_data, &$total, &$taxes) {
+        $this->load->language('total/sub_total');
 
-// Entry
-$_['entry_status']				= 'Status';
-$_['entry_sort_order']			= 'Sort Order';
-
-// Text
-$_['text_totals']				= 'Totals';
-$_['text_success']				= 'You have successfully modified sub-total.';
-
-// Error
-$_['error_permission']			= 'You do not have permission to modify sub-total.';
+        $total_data[] = array(
+            'code'       => 'sub_total',
+            'title'      => $this->language->get('heading_title'),
+            'value'      => $total,
+            'sort_order' => $this->config->get('sub_total_sort_order')
+        );
+    }
+}

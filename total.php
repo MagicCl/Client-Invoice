@@ -1,14 +1,13 @@
 <?php
-// Heading
-$_['heading_title']				= 'Total';
+class ModelTotalTotal extends Model {
+    public function getTotal(&$total_data, &$total, &$taxes) {
+        $this->load->language('total/total');
 
-// Entry
-$_['entry_status']				= 'Status';
-$_['entry_sort_order']			= 'Sort Order';
-
-// Text
-$_['text_totals']				= 'Totals';
-$_['text_success']				= 'You have successfully modified total.';
-
-// Error
-$_['error_permission']			= 'You do not have permission to modify total.';
+        $total_data[] = array(
+            'code'       => 'total',
+            'title'      => $this->language->get('heading_title'),
+            'value'      => max(0, $total),
+            'sort_order' => $this->config->get('total_sort_order')
+        );
+    }
+}
