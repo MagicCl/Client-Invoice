@@ -18,22 +18,25 @@
         <?php if ($error_warning) { ?>
         <div class="alert alert-danger"><?php echo $error_warning; ?></div>
         <?php } ?>
-        <?php if ($success) { ?>
-        <div class="alert alert-success"><?php echo $success; ?></div>
-        <?php } ?>
         <div class="form-group">
-          <label class="sr-only" for="input-email"><?php echo $entry_email; ?></label>
-          <input type="text" name="email" value="<?php echo $email; ?>" id="input-email" class="form-control" placeholder="<?php echo $entry_email; ?>" required autofocus />
+          <label class="sr-only" for="input-verify"><?php echo $entry_verify; ?></label>
+          <input type="password" name="verify" value="<?php echo $verify; ?>" id="input-verify" class="form-control" placeholder="<?php echo $entry_verify; ?>" required autofocus />
         </div>
         <div class="form-group">
           <label class="sr-only" for="input-password"><?php echo $entry_password; ?></label>
           <input type="password" name="password" value="<?php echo $password; ?>" id="input-password" class="form-control" placeholder="<?php echo $entry_password; ?>" required />
+          <?php if ($error_password) { ?>
+          <span class="text-danger"><?php echo $error_password; ?></span>
+          <?php } ?>
         </div>
-        <input type="hidden" name="redirect" value="<?php echo $redirect; ?>" />
-        <label class="forgotten">
-          <?php echo $text_forgotten; ?>
-        </label>
-        <button class="btn btn-lg btn-primary btn-block" type="submit"><?php echo $button_login; ?></button>
+        <div class="form-group">
+          <label class="sr-only" for="input-confirm"><?php echo $entry_confirm; ?></label>
+          <input type="password" name="confirm" value="<?php echo $confirm; ?>" id="input-confirm" class="form-control" placeholder="<?php echo $entry_confirm; ?>" required />
+          <?php if ($error_confirm) { ?>
+          <span class="text-danger"><?php echo $error_confirm; ?></span>
+          <?php } ?>
+        </div>
+        <button class="btn btn-lg btn-primary btn-block" type="submit"><?php echo $button_update; ?></button>
       </form>
     </div>
   </div>

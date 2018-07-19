@@ -1,8 +1,8 @@
 <?php echo $header; ?>
 <div class="header">
   <div class="container">
-    <h1><?php echo $text_invoice; ?> - <?php echo $date_issued; ?></h1>
-    <p><?php echo $status; ?> - <?php echo $date_due; ?></p>
+    <h1><?php echo $text_invoice_payment; ?></h1>
+    <p><?php echo $text_invoice_info; ?></p>
   </div>
 </div>
 <div id="content" class="container">
@@ -57,70 +57,51 @@
         </tr>
       </table>
     </div>
-    <div id="history" class="col-lg-12"></div>
-    <?php if ($payment_url) { ?>
-    <div class="col-lg-12 text-right">
-      <a href="<?php echo $payment_url; ?>" class="btn btn-primary btn-lg"><?php echo $button_make_payment; ?></a>
+    <div class="col-lg-6">
+      <h3><?php echo $text_payment_method; ?></h3>
+      <table class="table table-striped table-bordered">
+        <?php if ($payments) { ?>
+        <?php foreach ($payments as $payment) { ?>
+        <tr>
+          <td class="text-left">
+            <div class="radio">
+              <label><input type="radio" name="payment_method" value="<?php echo $payment['code']; ?>" /> <?php echo $payment['name']; ?></label>
+            </div>
+          </td>
+        </tr>
+        <?php } ?>
+        <?php } else { ?>
+        <tr>
+          <td class="text-left"><div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> <?php echo $text_no_payment; ?></div></td>
+        </tr>
+        <?php } ?>
+      </table>
     </div>
-    <?php } ?>
+    <div id="payment" class="col-lg-6"></div>
   </div>
 </div>
 <script type="text/javascript"><!--
-function history(page) {
-	$.ajax({
-		url: 'index.php?load=account/invoice/history&invoice_id=<?php echo $invoice_id; ?>&page=' + page,
-		dataType: 'json',
-		beforeSend: function () {
-			$('#history').html('<div class="text-center"><i class="fa fa-spinner fa-spin fa-4x"></i></div>');
-		},
-		complete: function () {
-			$('.fa-spinner').parent().remove();
-		},
-		success: function (json) {
-			var html = '<h3>' + json['text_history'] + '</h3>';
-
-			html += '<div class="table-responsive">';
-			html += '  <table class="table table-striped table-bordered table-hover">';
-			html += '    <tr>';
-			html += '      <th class="text-left">' + json['column_status'] + '</th>';
-			html += '      <th class="text-left">' + json['column_comment'] + '</th>';
-			html += '      <th class="text-right">' + json['column_date_added'] + '</th>';
-			html += '    </tr>';
-
-			if (json['histories'].length > 0) {
-				for (i = 0; i < json['histories'].length; i++) {
-					html += '    <tr>';
-					html += '      <td class="text-left">' + json['histories'][i]['status'] + '</td>';
-					html += '      <td class="text-left">' + json['histories'][i]['comment'] + '</td>';
-					html += '      <td class="text-right">' + json['histories'][i]['date_added'] + '</td>';
-					html += '    </tr>';
-				}
-			} else {
-				html += '    <tr>';
-				html += '      <td class="text-center" colspan="3">' + json['text_no_histories'] + '</td>';
-				html += '    </tr>';
-			}
-
-			html += '  </table>';
-			html += '</div>';
-			html += '<div class="pagination">' + json['pagination'] + '</div><br /><br />';
-
-			$('#history').html(html);
-		},
-		error: function (xhr, ajaxOptions, thrownError) {
-			alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
-		}
-	});
-}
-
 $(document).ready(function () {
-	history(1);
-});
+	$('input[name=\'payment_method\']').change(function () {
+		payment_code = $(this).val();
 
-$(document).on('click', '#history .pagination a', function () {
-	history($(this).attr('href'));
+		$.ajax({
+			url: 'index.php?load=payment/' + payment_code + '&invoice_id=<?php echo $invoice_id; ?>',
+			type: 'get',
+			dataType: 'html',
+			beforeSend: function () {
+				$('#payment').html(' <i class="fa fa-spinner fa-spin"></i>');
+			},
+			complete: function () {
+				$('.fa-spinner').remove();
+			},
+			success: function (html) {
+				$('#payment').html(html);
+			}
+		});
+	});
 
-	return false;
+	$('input[name=\'payment_method\']:checked').trigger('change');
 });
 //--></script>
 <?php echo $footer; ?>

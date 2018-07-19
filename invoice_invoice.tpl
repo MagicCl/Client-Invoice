@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html dir="<?php echo $direction; ?>" lang="<?php echo $language_code; ?>">
   <head>
     <meta charset="UTF-8" />
     <title><?php echo $title; ?></title>
     <base href="<?php echo $base; ?>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script type="text/javascript" src="<?php echo $application; ?>share/jquery-2.1.3.min.js"></script>
-    <script type="text/javascript" src="<?php echo $application; ?>share/bootstrap/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="<?php echo $application; ?>share/bootstrap/css/bootstrap.min.css" />
-    <link rel="stylesheet" type="text/css" href="view/stylesheet/stylesheet.css" />
+    <script type="text/javascript" src="share/jquery-2.1.3.min.js"></script>
+    <script type="text/javascript" src="share/bootstrap/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="share/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" type="text/css" href="share/font-awesome/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="application/view/stylesheet/stylesheet.css" />
   </head>
   <body>
     <div class="container">
@@ -17,11 +18,16 @@
           <h3 class="status"><?php echo $status; ?></h3>
           <?php echo $text_updated; ?> <?php echo $date_modified; ?>
         </div>
+        <?php if ($payment_url) { ?>
+        <div class="col-xs-6 text-right">
+          <a href="<?php echo $payment_url; ?>" class="btn btn-primary btn-lg"><?php echo $button_make_payment; ?></a>
+        </div>
+        <?php } ?>
       </div>
       <div class="row well">
         <div class="col-xs-6">
           <h3><?php echo $invoice_prefix; ?><?php echo $invoice_id; ?></h3>
-          <?php echo $text_issued; ?> <?php echo $date_issued; ?><br />
+          <?php echo $date_issued; ?><br />
           <?php if ($payment_firstname || $payment_lastname) { ?>
           <?php echo $payment_firstname; ?> <?php echo $payment_lastname; ?><br />
           <?php } else { ?>
