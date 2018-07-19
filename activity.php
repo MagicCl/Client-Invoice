@@ -1,15 +1,36 @@
 <?php
-// Heading
-$_['heading_title']			= 'Activity Log';
+class ModelSystemActivity extends Model {
+    public function addActivity($message) {
+        $this->db->query("INSERT INTO " . DB_PREFIX . "activity SET message = '" . $this->db->escape($message) . "', date_added = NOW()");
+    }
 
-// Column
-$_['column_date_added']		= 'Date Added';
-$_['column_message']		= 'Message';
+    public function getActivities($data = array()) {
+        $sql = "SELECT * FROM " . DB_PREFIX . "activity ORDER BY activity_id DESC";
 
-// Text
-$_['text_no_results']		= 'There is no activity to list.';
-$_['text_success']			= 'You have successfully modified activity log.';
-$_['text_clear']			= '[Activity Log] Activity log was cleared by %s.';
+        if (isset($data['start']) && isset($data['limit'])) {
+            if ($data['start'] < 0) {
+                $data['start'] = 0;
+            }
 
-// Error
-$_['error_permission']		= 'You do not have permission to modify activity log.';
+            if ($data['limit'] < 1) {
+                $data['limit'] = 20;
+            }
+
+            $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+        }
+
+        $query = $this->db->query($sql);
+
+        return $query->rows;
+    }
+
+    public function deleteActivities() {
+        $this->db->query("DELETE FROM " . DB_PREFIX . "activity");
+    }
+
+    public function getTotalActivities() {
+        $query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "activity");
+
+        return $query->row['total'];
+    }
+}
