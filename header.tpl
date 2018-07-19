@@ -1,109 +1,84 @@
 <!DOCTYPE html>
 <html dir="<?php echo $direction; ?>" lang="<?php echo $language_code; ?>">
   <head>
+    <meta charset="UTF-8" />
     <title><?php echo $title; ?></title>
     <base href="<?php echo $base; ?>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script type="text/javascript" src="<?php echo $application; ?>share/jquery-2.1.3.min.js"></script>
-    <script type="text/javascript" src="<?php echo $application; ?>share/bootstrap/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="view/javascript/system.js"></script>
-    <link rel="stylesheet" type="text/css" href="<?php echo $application; ?>share/bootstrap/css/bootstrap.min.css" />
-    <link rel="stylesheet" type="text/css" href="<?php echo $application; ?>share/font-awesome/css/font-awesome.min.css" />
-    <link rel="stylesheet" type="text/css" href="view/stylesheet/stylesheet.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php if ($description) { ?>
+    <meta name="description" content="<?php echo $description; ?>" />
+    <?php } ?>
+    <?php if ($keywords) { ?>
+    <meta name="keywords" content="<?php echo $keywords; ?>" />
+    <?php } ?>
+    <?php if ($icon) { ?>
+    <link href="<?php echo $icon; ?>" type="image/png" rel="icon" />
+    <?php } ?>
+    <?php foreach ($links as $link) { ?>
+    <link href="<?php echo $link['href']; ?>" rel="<?php echo $link['rel']; ?>" />
+    <?php } ?>
+    <script type="text/javascript" src="share/jquery-2.1.3.min.js"></script>
+    <script type="text/javascript" src="share/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="application/view/javascript/system.js"></script>
+    <link rel="stylesheet" type="text/css" href="share/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" type="text/css" href="share/font-awesome/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="application/view/stylesheet/stylesheet.css" />
     <?php foreach ($scripts as $script) { ?>
     <script type="text/javascript" src="<?php echo $script; ?>"></script>
     <?php } ?>
     <?php foreach ($styles as $style) { ?>
     <link rel="<?php echo $style['rel']; ?>" type="text/css" href="<?php echo $style['href']; ?>" media="<?php echo $style['media']; ?>" />
     <?php } ?>
+    <?php echo $google_analytics; ?>
   </head>
   <body>
-    <?php if ($logged) { ?>
-    <header id="header">
-      <img id="button-menu" src="view/image/icon.png" style="height:30px;" />
-      <ul class="nav pull-right">
-        <li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-life-ring"></i></a>
-          <ul class="dropdown-menu dropdown-menu-right">
-            <li><a href="http://www.MagicLabs.lk" target="_blank">Magic Labs</a></li>
-            <li><a href="https://plus.google.com/+Equotix/posts" target="_blank">Google+</a></li>
+    <!-- Powered by www.MagicLabs.lk -->
+    <header class="navbar navbar-custom navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <?php if ($logo) { ?>
+          <a class="navbar-brand" href="<?php echo $home; ?>"><img src="<?php echo $logo; ?>" alt="<?php echo $name; ?>" title="<?php echo $name; ?>" /></a>
+          <?php } else { ?>
+          <a class="navbar-brand" href="<?php echo $home; ?>"><?php echo $name; ?></a>
+          <?php } ?>
+        </div>
+        <nav class="collapse navbar-collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="<?php echo $home; ?>">Home</a></li>
+            <?php foreach ($articles as $article) { ?>
+            <?php if ($article['children']) { ?>
+            <li class="dropdown"><a href="<?php echo $article['href']; ?>" class="dropdown-toggle" data-toggle="dropdown"><?php echo $article['title']; ?> <b class="caret"></b></a>
+              <ul class="dropdown-menu" role="menu">
+                <li><a href="<?php echo $article['href']; ?>"><?php echo $article['title']; ?></a></li>
+                <?php foreach ($article['children'] as $child) { ?>
+                <li><a href="<?php echo $child['href']; ?>"><?php echo $child['title']; ?></a></li>
+                <?php } ?>
+              </ul>
+              <?php } else { ?>
+            <li><a href="<?php echo $article['href']; ?>"><?php echo $article['title']; ?></a>
+              <?php } ?>
+            </li>
+            <?php } ?>
+            <li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="<?php echo $account; ?>"><?php echo $text_client; ?> <b class="caret"></b></a>
+              <ul class="dropdown-menu" role="menu">
+                <?php if ($logged) { ?>
+                <li><a href="<?php echo $account; ?>"><?php echo $text_account; ?></a>
+                <li><a href="<?php echo $invoice; ?>"><?php echo $text_invoice; ?></a>
+                <li><a href="<?php echo $logout; ?>"><?php echo $text_logout; ?></a>
+                  <?php } else { ?>
+                <li><a href="<?php echo $login; ?>"><?php echo $text_login; ?></a>
+                  <?php if ($register) { ?>
+                <li><a href="<?php echo $register; ?>"><?php echo $text_register; ?></a>
+                  <?php } ?>
+                  <?php } ?>
+              </ul>
+            </li>
           </ul>
-        </li>
-        <li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown"><?php echo $username; ?></a>
-          <ul class="dropdown-menu dropdown-menu-right">
-            <li><a href="<?php echo $logout; ?>"><i class="fa fa-sign-out"></i> <?php echo $text_logout; ?></a></li>
-            <li><a href="<?php echo $website; ?>" target="_blank"><i class="fa fa-globe"></i> <?php echo $text_website; ?></a></li>
-          </ul>
-        </li>
-      </ul>
+        </nav>
+      </div>
     </header>
-    <nav id="column-left" role="navigation">
-      <ul id="menu">
-        <li><a href="<?php echo $dashboard; ?>"><i class="fa fa-dashboard fa-fw"></i> <span><?php echo $text_dashboard; ?></span></a></li>
-        <li><a class="parent"><i class="fa fa-book fa-fw"></i> <span><?php echo $text_accounting; ?></span></a>
-          <ul>
-            <li><a href="<?php echo $account; ?>"><span><?php echo $text_account; ?></span></a></li>
-            <li><a href="<?php echo $currency; ?>"><span><?php echo $text_currency; ?></span></a></li>
-            <li><a href="<?php echo $journal; ?>"><span><?php echo $text_journal; ?></span></a></li>
-            <li><a class="parent"><span><?php echo $text_tax; ?></span></a>
-              <ul>
-                <li><a href="<?php echo $tax_class; ?>"><span><?php echo $text_tax_class; ?></span></a></li>
-                <li><a href="<?php echo $tax_rate; ?>"><span><?php echo $text_tax_rate; ?></span></a></li>
-              </ul>
-            </li>
-          </ul>
-        </li>
-        <li><a class="parent"><i class="fa fa-usd fa-fw"></i> <span><?php echo $text_billing; ?></span></a>
-          <ul>
-            <li><a href="<?php echo $customer; ?>"><span><?php echo $text_customer; ?></span></a></li>
-            <li><a href="<?php echo $invoice; ?>"><span><?php echo $text_invoice; ?></span></a></li>
-            <li><a href="<?php echo $recurring; ?>"><span><?php echo $text_recurring; ?></span></a></li>
-          </ul>
-        </li>
-        <li><a class="parent"><i class="fa fa-newspaper-o fa-fw"></i> <span><?php echo $text_content; ?></span></a>
-          <ul>
-            <li><a href="<?php echo $article; ?>"><span><?php echo $text_article; ?></span></a></li>
-            <li><a href="<?php echo $email_template; ?>"><span><?php echo $text_email_template; ?></span></a></li>
-          </ul>
-        </li>
-        <li><a class="parent"><i class="fa fa-puzzle-piece fa-fw"></i> <span><?php echo $text_extension; ?></span></a>
-          <ul>
-            <li><a href="<?php echo $payment; ?>"><span><?php echo $text_payment; ?></span></a></li>
-            <li><a href="<?php echo $total; ?>"><span><?php echo $text_total; ?></span></a></li>
-          </ul>
-        </li>
-        <li><a class="parent"><i class="fa fa-line-chart fa-fw"></i> <span><?php echo $text_report; ?></span></a>
-          <ul>
-            <li><a class="parent"><span><?php echo $text_accounting; ?></span></a>
-              <ul>
-                <li><a href="<?php echo $chart_of_accounts; ?>"><span><?php echo $text_chart_of_accounts; ?></span></a></li>
-                <li><a href="<?php echo $sci; ?>"><span><?php echo $text_sci; ?></span></a></li>
-                <li><a href="<?php echo $sfp; ?>"><span><?php echo $text_sfp; ?></span></a></li>
-              </ul>
-            </li>
-            <li><a href="<?php echo $report_invoice; ?>"><span><?php echo $text_invoice; ?></span></a></li>
-            <li><a href="<?php echo $report_recurring; ?>"><span><?php echo $text_recurring; ?></span></a></li>
-          </ul>
-        </li>
-        <li><a class="parent"><i class="fa fa-wrench fa-fw"></i> <span><?php echo $text_system; ?></span></a>
-          <ul>
-            <li><a href="<?php echo $language; ?>"><span><?php echo $text_language; ?></span></a></li>
-            <li><a href="<?php echo $setting; ?>"><span><?php echo $text_setting; ?></span></a></li>
-            <li><a href="<?php echo $status; ?>"><span><?php echo $text_status; ?></span></a></li>
-            <li><a class="parent"><span><?php echo $text_log; ?></span></a>
-              <ul>
-                <li><a href="<?php echo $activity; ?>"><span><?php echo $text_activity; ?></span></a></li>
-                <li><a href="<?php echo $error; ?>"><span><?php echo $text_error; ?></span></a></li>
-              </ul>
-            </li>
-            <li><a class="parent"><span><?php echo $text_user; ?></span></a>
-              <ul>
-                <li><a href="<?php echo $user; ?>"><span><?php echo $text_user; ?></span></a></li>
-                <li><a href="<?php echo $user_group; ?>"><span><?php echo $text_user_group; ?></span></a></li>
-              </ul>
-            </li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
-    <?php } ?>
-    <div id="content" class="container-fluid">
