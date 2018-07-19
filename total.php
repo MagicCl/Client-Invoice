@@ -1,16 +1,14 @@
 <?php
 // Heading
-$_['heading_title']		= 'Totals';
+$_['heading_title']				= 'Total';
 
-// Column
-$_['column_name']		= 'Name';
-$_['column_status']		= 'Status';
-$_['column_sort_order']	= 'Sort Order';
-$_['column_action']		= 'Action';
+// Entry
+$_['entry_status']				= 'Status';
+$_['entry_sort_order']			= 'Sort Order';
 
 // Text
-$_['text_no_results']	= 'There is no total to list.';
-$_['text_success']		= 'You have successfully modified totals.';
+$_['text_totals']				= 'Totals';
+$_['text_success']				= 'You have successfully modified total.';
 
 // Error
-$_['error_permission']	= 'You do not have permission to modify total.';
+$_['error_permission']			= 'You do not have permission to modify total.';

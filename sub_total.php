@@ -1,64 +1,14 @@
 <?php
-class ControllerTotalSubTotal extends Controller {
-    private $error = array();
+// Heading
+$_['heading_title']				= 'Sub-Total';
 
-    public function index() {
-        $this->data = $this->load->language('total/sub_total');
+// Entry
+$_['entry_status']				= 'Status';
+$_['entry_sort_order']			= 'Sort Order';
 
-        $this->document->setTitle($this->language->get('heading_title'));
+// Text
+$_['text_totals']				= 'Totals';
+$_['text_success']				= 'You have successfully modified sub-total.';
 
-        $this->data['breadcrumbs'] = array();
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_home'),
-            'href' => $this->url->link('common/dashboard', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_totals'),
-            'href' => $this->url->link('extension/total', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('heading_title'),
-            'href' => $this->url->link('total/sub_total', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->load->model('system/setting');
-
-        if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
-            $this->model_system_setting->editSetting('sub_total', $this->request->post);
-
-            $this->session->data['success'] = $this->language->get('text_success');
-
-            $this->response->redirect($this->url->link('extension/total', 'token=' . $this->session->data['token'], 'SSL'));
-        }
-
-        $this->data['action'] = $this->url->link('total/sub_total', 'token=' . $this->session->data['token'], 'SSL');
-        $this->data['cancel'] = $this->url->link('extension/total', 'token=' . $this->session->data['token'], 'SSL');
-
-        $this->data['error_warning'] = $this->build->data('warning', $this->error);
-
-        $setting = $this->model_system_setting->getSetting('sub_total');
-
-        $this->data['sub_total_status'] = $this->build->data('sub_total_status', $this->request->post, $setting);
-        $this->data['sub_total_sort_order'] = $this->build->data('sub_total_sort_order', $this->request->post, $setting);
-
-        $this->data['header'] = $this->load->controller('common/header');
-        $this->data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->render('total/sub_total.tpl'));
-    }
-
-    protected function validate() {
-        if (!$this->user->hasPermission('modify', 'total/sub_total')) {
-            $this->error['warning'] = $this->language->get('error_permission');
-        }
-
-        if (!$this->error) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-}
+// Error
+$_['error_permission']			= 'You do not have permission to modify sub-total.';
