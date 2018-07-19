@@ -1,123 +1,45 @@
 <?php
-class ModelAccountingAccount extends Model {
-    public function addAccount($data) {
-        $this->db->query("INSERT INTO " . DB_PREFIX . "account SET account_id = '" . (int)$data['account_id'] . "', name = '" . $this->db->escape($data['name']) . "', description = '" . $this->db->escape($data['description']) . "', type = '" . $this->db->escape($data['type']) . "', parent_id = '" . (int)$data['parent_id'] . "', status = '" . (int)$data['status'] . "'");
+class ControllerAccountAccount extends Controller {
+    public function index() {
+        if (!$this->customer->isLogged()) {
+            $this->session->data['redirect'] = $this->url->link('account/account', '', 'SSL');
 
-        $this->cache->delete('account');
-    }
-
-    public function editAccount($account_id, $data) {
-        $this->db->query("UPDATE " . DB_PREFIX . "account SET account_id = '" . (int)$data['account_id'] . "', name = '" . $this->db->escape($data['name']) . "', description = '" . $this->db->escape($data['description']) . "', type = '" . $this->db->escape($data['type']) . "', parent_id = '" . (int)$data['parent_id'] . "', status = '" . (int)$data['status'] . "' WHERE account_id = '" . (int)$account_id . "'");
-
-        $this->cache->delete('account');
-    }
-
-    public function deleteAccount($account_id) {
-        $this->db->query("DELETE FROM " . DB_PREFIX . "account WHERE account_id = '" . (int)$account_id . "'");
-
-        $this->cache->delete('account');
-    }
-
-    public function getAccount($account_id) {
-        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "account WHERE account_id = '" . (int)$account_id . "'");
-
-        return $query->row;
-    }
-
-    public function getAccounts($data = array()) {
-        if ($data) {
-            $sql = "SELECT * FROM " . DB_PREFIX . "account";
-
-            $implode = array();
-
-            if (isset($data['filter_type'])) {
-                $implode[] = "type = '" . $this->db->escape($data['filter_type']) . "'";
-            }
-
-            if (isset($data['filter_parent_id'])) {
-                $implode[] = "parent_id = '" . (int)$data['filter_parent_id'] . "'";
-            }
-
-            if ($implode) {
-                $sql .= " WHERE " . implode(" AND ", $implode);
-            }
-
-            $sort_data = array(
-                'account_id',
-                'name',
-                'description',
-                'type',
-                'parent_id',
-                'status'
-            );
-
-            if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
-                if ($data['sort'] == 'account_id') {
-                    $sql .= " ORDER BY RPAD(account_id, 15, '0')";
-                } else {
-                    $sql .= " ORDER BY " . $data['sort'];
-                }
-            } else {
-                $sql .= " ORDER BY name";
-            }
-
-            if (isset($data['order']) && ($data['order'] == 'DESC')) {
-                $sql .= " DESC";
-            } else {
-                $sql .= " ASC";
-            }
-
-            if (isset($data['start']) && isset($data['limit'])) {
-                if ($data['start'] < 0) {
-                    $data['start'] = 0;
-                }
-
-                if ($data['limit'] < 1) {
-                    $data['limit'] = 20;
-                }
-
-                $sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
-            }
-
-            $query = $this->db->query($sql);
-
-            return $query->rows;
-        } else {
-            $account_data = $this->cache->get('account');
-
-            if (!$account_data) {
-                $account_data = array();
-
-                $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "account WHERE parent_id = '0' ORDER BY RPAD(account_id, 15, '0')");
-
-                foreach ($query->rows as $result) {
-                    $account_data[] = array(
-                        'account_id'        => $result['account_id'],
-                        'name'              => $result['name'],
-                        'description'       => $result['description'],
-                        'type'              => $result['type'],
-                        'parent_id'         => $result['parent_id'],
-                        'status'            => $result['status'],
-                        'retained_earnings' => $result['retained_earnings']
-                    );
-                }
-
-                $this->cache->set('account', $account_data);
-            }
-
-            return $account_data;
+            $this->response->redirect($this->url->link('account/login', '', 'SSL'));
         }
-    }
 
-    public function getTotalAccounts() {
-        $query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "account");
+        $this->data = $this->load->language('account/account');
 
-        return $query->row['total'];
-    }
+        $this->document->setTitle($this->language->get('heading_title'));
 
-    public function getAccountsByType($types) {
-        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "account WHERE type IN ('" . implode('\',\'', $types) . "')");
+        $this->data['breadcrumbs'] = array();
 
-        return $query->rows;
+        $this->data['breadcrumbs'][] = array(
+            'text' => $this->language->get('text_home'),
+            'href' => $this->url->link('common/home')
+        );
+
+        $this->data['breadcrumbs'][] = array(
+            'text' => $this->language->get('text_account'),
+            'href' => $this->url->link('account/account', '', 'SSL')
+        );
+
+        if (isset($this->session->data['success'])) {
+            $this->data['success'] = $this->session->data['success'];
+
+            unset($this->session->data['success']);
+        } else {
+            $this->data['success'] = '';
+        }
+
+        $this->data['update'] = $this->url->link('account/update', '', 'SSL');
+        $this->data['password'] = $this->url->link('account/password', '', 'SSL');
+        $this->data['invoice'] = $this->url->link('account/invoice', '', 'SSL');
+        $this->data['recurring'] = $this->url->link('account/recurring', '', 'SSL');
+        $this->data['credit'] = $this->url->link('account/credit', '', 'SSL');
+
+        $this->data['header'] = $this->load->controller('common/header');
+        $this->data['footer'] = $this->load->controller('common/footer');
+
+        $this->response->setOutput($this->render('account/account.tpl'));
     }
 }
