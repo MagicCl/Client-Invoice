@@ -1,35 +1,17 @@
 <?php
-class ControllerApiLogin extends Controller {
-    public function index() {
-        $this->load->language('api/login');
+// Heading
+$_['heading_title'] 			= 'Account Login';
 
-        $json = array();
+// Text
+$_['text_account'] 				= 'My Account';
+$_['text_info']					= 'Log into your account to manage your invoices and recurring bills.';
+$_['text_register_forgotten'] 	= '<a href="%s">Register</a> an account or <a href="%s">forgotten</a> password?';
+$_['text_forgotten'] 			= '<a href="%s">Forgotten</a> password?';
+$_['text_register'] 			= '<a href="%s">Register</a> an account.';
 
-        $json['success'] = false;
+// Entry
+$_['entry_email'] 				= 'Email';
+$_['entry_password'] 			= 'Password';
 
-        unset($this->session->data['api_key']);
-
-        $this->load->model('api/api');
-        $this->load->model('system/activity');
-
-        if (isset($this->request->post['key']) && isset($this->request->post['secret'])) {
-            $api_info = $this->model_api_api->login($this->request->post['key'], $this->request->post['secret']);
-
-            if ($api_info) {
-                $json['success'] = true;
-
-                $this->session->data['api_key'] = md5(mt_rand());
-                $this->session->data['username'] = $api_info['username'];
-
-                $json['api_key'] = $this->session->data['api_key'];
-
-                $json['cookie'] = $this->session->getId();
-
-                $this->model_system_activity->addActivity(sprintf($this->language->get('text_login'), $this->session->data['username']));
-            }
-        }
-
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
-    }
-}
+// Error
+$_['error_login'] 				= 'The login information you had entered is incorrect!';
