@@ -1,146 +1,57 @@
 <?php
-class ControllerReportRecurring extends Controller {
-    private $error = array();
+// Heading
+$_['heading_title']				= 'Recurring Payments';
 
-    public function index() {
-        $this->data = $this->load->language('report/recurring');
+// Column
+$_['column_recurring_id']		= 'Recurring ID';
+$_['column_name']				= 'Name';
+$_['column_total']				= 'Total';
+$_['column_status']				= 'Status';
+$_['column_cycle']				= 'Cycle';
+$_['column_date_added']			= 'Date Added';
+$_['column_date_due']			= 'Date Due';
+$_['column_date_modified']		= 'Last Modified';
+$_['column_action']				= 'Action';
+$_['column_number']				= 'No.';
+$_['column_title']				= 'Title';
+$_['column_description']		= 'Description';
+$_['column_quantity']			= 'Quantity';
+$_['column_price']				= 'Price';
+$_['column_tax_class']			= 'Tax Class';
+$_['column_discount']			= 'Discount';
+$_['column_total']				= 'Total';
 
-        $this->document->setTitle($this->language->get('heading_title'));
+// Entry
+$_['entry_recurring_id']		= 'Recurring ID';
+$_['entry_customer']			= 'Customer';
+$_['entry_payment_code']		= 'Payment Method';
+$_['entry_payment_name']		= 'Payment Name';
+$_['entry_payment_description']	= 'Payment Description';
+$_['entry_currency_code']		= 'Currency';
+$_['entry_currency_value']		= 'Currency Value';
+$_['entry_comment']				= 'Comment';
+$_['entry_status']				= 'Status';
+$_['entry_cycle']				= 'Cycle';
+$_['entry_date_due']			= 'Date Due';
 
-        $this->document->addScript('view/javascript/datetimepicker/moment.js');
-        $this->document->addScript('view/javascript/datetimepicker/bootstrap-datetimepicker.min.js');
-        $this->document->addStyle('view/javascript/datetimepicker/bootstrap-datetimepicker.min.css');
+// Tab
+$_['tab_general']				= '1. General';
+$_['tab_payment_method']		= '2. Payment Method';
+$_['tab_item']					= '3. Items';
+$_['tab_total']					= '4. Totals';
 
-        $url = $this->build->url(array(
-            'filter_status',
-            'filter_date_added_start',
-            'filter_date_added_end',
-            'filter_group',
-            'page'
-        ));
+// Text
+$_['text_no_results']			= 'There is no recurring to list.';
+$_['text_success']				= 'You have successfully modified recurring payments.';
 
-        $this->data['breadcrumbs'] = array();
+// Tooltip
+$_['tooltip_price']				= 'Price per quantity, excluding taxes.';
 
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_home'),
-            'href' => $this->url->link('common/dashboard', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('heading_title'),
-            'href' => $this->url->link('report/recurring', 'token=' . $this->session->data['token'] . $url, 'SSL')
-        );
-
-        if (isset($this->request->get['filter_status'])) {
-            $filter_status = $this->request->get['filter_status'];
-        } else {
-            $filter_status = null;
-        }
-
-        if (isset($this->request->get['filter_date_added_start'])) {
-            $filter_date_added_start = $this->request->get['filter_date_added_start'];
-        } else {
-            $filter_date_added_start = date('Y-m-d', strtotime(date('Y') . '-' . date('m') . '-01'));
-        }
-
-        if (isset($this->request->get['filter_date_added_end'])) {
-            $filter_date_added_end = $this->request->get['filter_date_added_end'];
-        } else {
-            $filter_date_added_end = date('Y-m-d');
-        }
-
-        if (isset($this->request->get['filter_group'])) {
-            $filter_group = $this->request->get['filter_group'];
-        } else {
-            $filter_group = 'year';
-        }
-
-        if (isset($this->request->get['page'])) {
-            $page = $this->request->get['page'];
-        } else {
-            $page = 1;
-        }
-
-        $url = $this->build->url(array(
-            'filter_status',
-            'filter_date_added_start',
-            'filter_date_added_end',
-            'filter_group',
-            'page'
-        ));
-
-        $filter_data = array(
-            'filter_status'           => $filter_status,
-            'filter_date_added_start' => $filter_date_added_start,
-            'filter_date_added_end'   => $filter_date_added_end,
-            'filter_group'            => $filter_group,
-            'start'                   => $this->config->get('config_limit_admin') * ($page - 1),
-            'limit'                   => $this->config->get('config_limit_admin'),
-        );
-
-        $this->load->model('report/recurring');
-
-        $this->data['recurrings'] = array();
-
-        $recurrings = $this->model_report_recurring->getRecurringsByGroup($filter_data);
-
-        foreach ($recurrings as $recurring) {
-            $this->data['recurrings'][] = array(
-                'date_start' => date($this->language->get('date_format_short'), strtotime($recurring['date_start'])),
-                'date_end'   => date($this->language->get('date_format_short'), strtotime($recurring['date_end'])),
-                'cycle'      => $this->language->get('text_' . $recurring['cycle']),
-                'recurrings' => $recurring['recurrings'],
-                'items'      => $recurring['items'],
-                'tax'        => $this->currency->format($recurring['tax'], $this->config->get('config_currency')),
-                'total'      => $this->currency->format($recurring['total'], $this->config->get('config_currency'))
-            );
-        }
-
-        $this->data['token'] = $this->session->data['token'];
-
-        $this->data['groups'] = array();
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_year'),
-            'value' => 'year',
-        );
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_month'),
-            'value' => 'month',
-        );
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_week'),
-            'value' => 'week',
-        );
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_day'),
-            'value' => 'day',
-        );
-
-        $data['groups'][] = array(
-            'text'  => $this->language->get('text_day'),
-            'value' => 'day',
-        );
-
-        $pagination = new Pagination();
-        $pagination->total = $this->model_report_recurring->getTotalRecurringsByGroup($filter_data);
-        $pagination->page = $page;
-        $pagination->limit = $this->config->get('config_limit_admin');
-        $pagination->url = $this->url->link('report/recurring', 'token=' . $this->session->data['token'] . $url . '&page={page}', 'SSL');
-
-        $this->data['pagination'] = $pagination->render();
-
-        $this->data['filter_status'] = $filter_status;
-        $this->data['filter_date_added_start'] = $filter_date_added_start;
-        $this->data['filter_date_added_end'] = $filter_date_added_end;
-        $this->data['filter_group'] = $filter_group;
-
-        $this->data['header'] = $this->load->controller('common/header');
-        $this->data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->render('report/recurring.tpl'));
-    }
-}
+// Error
+$_['error_permission']			= 'You do not have permission to modify recurring payments.';
+$_['error_customer']			= 'Customer is required.';
+$_['error_payment_name']	 	= 'Payment name must not be empty.';
+$_['error_currency_code']	 	= 'Currency must be selected.';
+$_['error_currency_value']	 	= 'Currency value must be greater than 0.';
+$_['error_date_due']	 		= 'Date due must not be empty.';
+$_['error_item']	 			= 'At least one item is required for total calculation.';

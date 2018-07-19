@@ -1,149 +1,82 @@
 <?php
-class ControllerReportInvoice extends Controller {
-    private $error = array();
+// Heading
+$_['heading_title']				= 'Invoices';
 
-    public function index() {
-        $this->data = $this->load->language('report/invoice');
+// Column
+$_['column_invoice_id']			= 'Invoice ID';
+$_['column_name']				= 'Name';
+$_['column_total']				= 'Total';
+$_['column_status']				= 'Status';
+$_['column_date_issued']		= 'Date Issued';
+$_['column_date_due']			= 'Date Due';
+$_['column_date_modified']		= 'Last Modified';
+$_['column_journal_entry']		= 'Journal Entry';
+$_['column_action']				= 'Action';
+$_['column_number']				= 'No.';
+$_['column_title']				= 'Title';
+$_['column_description']		= 'Description';
+$_['column_quantity']		    = 'Quantity';
+$_['column_price']				= 'Price';
+$_['column_tax_class']			= 'Tax Class';
+$_['column_discount']			= 'Discount';
+$_['column_total']				= 'Total';
+$_['column_status']				= 'Status';
+$_['column_comment']			= 'Comment';
+$_['column_date_added']			= 'Date Added';
 
-        $this->document->setTitle($this->language->get('heading_title'));
+// Entry
+$_['entry_invoice_id']			= 'Invoice ID';
+$_['entry_customer']			= 'Customer';
+$_['entry_firstname']			= 'First Name';
+$_['entry_lastname']			= 'Last Name';
+$_['entry_company']				= 'Company';
+$_['entry_website']				= 'Website';
+$_['entry_email']				= 'Email Address';
+$_['entry_payment_firstname']	= 'Payment First Name';
+$_['entry_payment_lastname']	= 'Payment Last Name';
+$_['entry_payment_company']		= 'Payment Company';
+$_['entry_payment_address_1']	= 'Payment Address 1';
+$_['entry_payment_address_2']	= 'Payment Address 2';
+$_['entry_payment_city']		= 'Payment City';
+$_['entry_payment_postcode']	= 'Payment Postcode';
+$_['entry_payment_country']		= 'Payment Country';
+$_['entry_payment_zone']		= 'Payment Zone';
+$_['entry_payment_code']		= 'Payment Method';
+$_['entry_payment_name']		= 'Payment Name';
+$_['entry_payment_description']	= 'Payment Description';
+$_['entry_currency_code']		= 'Currency';
+$_['entry_currency_value']		= 'Currency Value';
+$_['entry_comment']				= 'Comment';
+$_['entry_status']				= 'Status';
+$_['entry_date_due']			= 'Date Due';
 
-        $this->document->addScript('view/javascript/datetimepicker/moment.js');
-        $this->document->addScript('view/javascript/datetimepicker/bootstrap-datetimepicker.min.js');
-        $this->document->addStyle('view/javascript/datetimepicker/bootstrap-datetimepicker.min.css');
+// Tab
+$_['tab_general']				= '1. General';
+$_['tab_payment_detail']		= '2. Payment Details';
+$_['tab_payment_method']		= '3. Payment Method';
+$_['tab_item']					= '4. Items';
+$_['tab_total']					= '5. Review';
+$_['tab_history']				= '5. History';
 
-        $url = $this->build->url(array(
-            'filter_status_id',
-            'filter_date_issued_start',
-            'filter_date_issued_end',
-            'filter_group',
-            'page'
-        ));
+// Text
+$_['text_no_results']			= 'There is no invoice to list.';
+$_['text_success']				= 'You have successfully modified invoices.';
+$_['text_no_histories']			= 'There is no history to list.';
+$_['text_updated']				= 'Updated:';
+$_['text_issued']				= 'Issued:';
+$_['text_item']					= 'Items';
+$_['text_payment']				= 'Payment';
 
-        $this->data['breadcrumbs'] = array();
+// Tooltip
+$_['tooltip_price']             = 'Price per quantity, excluding taxes.';
 
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('text_home'),
-            'href' => $this->url->link('common/dashboard', 'token=' . $this->session->data['token'], 'SSL')
-        );
-
-        $this->data['breadcrumbs'][] = array(
-            'text' => $this->language->get('heading_title'),
-            'href' => $this->url->link('report/invoice', 'token=' . $this->session->data['token'] . $url, 'SSL')
-        );
-
-        if (isset($this->request->get['filter_status_id'])) {
-            $filter_status_id = $this->request->get['filter_status_id'];
-        } else {
-            $filter_status_id = '';
-        }
-
-        if (isset($this->request->get['filter_date_issued_start'])) {
-            $filter_date_issued_start = $this->request->get['filter_date_issued_start'];
-        } else {
-            $filter_date_issued_start = date('Y-m-d', strtotime(date('Y') . '-' . date('m') . '-01'));
-        }
-
-        if (isset($this->request->get['filter_date_issued_end'])) {
-            $filter_date_issued_end = $this->request->get['filter_date_issued_end'];
-        } else {
-            $filter_date_issued_end = date('Y-m-d');
-        }
-
-        if (isset($this->request->get['filter_group'])) {
-            $filter_group = $this->request->get['filter_group'];
-        } else {
-            $filter_group = 'year';
-        }
-
-        if (isset($this->request->get['page'])) {
-            $page = $this->request->get['page'];
-        } else {
-            $page = 1;
-        }
-
-        $url = $this->build->url(array(
-            'filter_status_id',
-            'filter_date_issued_start',
-            'filter_date_issued_end',
-            'filter_group',
-            'page'
-        ));
-
-        $filter_data = array(
-            'filter_status_id'         => $filter_status_id,
-            'filter_date_issued_start' => $filter_date_issued_start,
-            'filter_date_issued_end'   => $filter_date_issued_end,
-            'filter_group'             => $filter_group,
-            'start'                    => $this->config->get('config_limit_admin') * ($page - 1),
-            'limit'                    => $this->config->get('config_limit_admin'),
-        );
-
-        $this->load->model('report/invoice');
-
-        $this->data['invoices'] = array();
-
-        $invoices = $this->model_report_invoice->getInvoicesByGroup($filter_data);
-
-        foreach ($invoices as $invoice) {
-            $this->data['invoices'][] = array(
-                'date_start' => date($this->language->get('date_format_short'), strtotime($invoice['date_start'])),
-                'date_end'   => date($this->language->get('date_format_short'), strtotime($invoice['date_end'])),
-                'invoices'   => $invoice['invoices'],
-                'items'      => $invoice['items'],
-                'tax'        => $this->currency->format($invoice['tax'], $this->config->get('config_currency')),
-                'total'      => $this->currency->format($invoice['total'], $this->config->get('config_currency'))
-            );
-        }
-
-        $this->data['token'] = $this->session->data['token'];
-
-        $this->load->model('system/status');
-
-        $this->data['statuses'] = $this->model_system_status->getStatuses();
-
-        $this->data['groups'] = array();
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_year'),
-            'value' => 'year',
-        );
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_month'),
-            'value' => 'month',
-        );
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_week'),
-            'value' => 'week',
-        );
-
-        $this->data['groups'][] = array(
-            'text'  => $this->language->get('text_day'),
-            'value' => 'day',
-        );
-
-        $data['groups'][] = array(
-            'text'  => $this->language->get('text_day'),
-            'value' => 'day',
-        );
-
-        $pagination = new Pagination();
-        $pagination->total = $this->model_report_invoice->getTotalInvoicesByGroup($filter_data);
-        $pagination->page = $page;
-        $pagination->limit = $this->config->get('config_limit_admin');
-        $pagination->url = $this->url->link('report/invoice', 'token=' . $this->session->data['token'] . $url . '&page={page}', 'SSL');
-
-        $this->data['pagination'] = $pagination->render();
-
-        $this->data['filter_status_id'] = $filter_status_id;
-        $this->data['filter_date_issued_start'] = $filter_date_issued_start;
-        $this->data['filter_date_issued_end'] = $filter_date_issued_end;
-        $this->data['filter_group'] = $filter_group;
-
-        $this->data['header'] = $this->load->controller('common/header');
-        $this->data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->render('report/invoice.tpl'));
-    }
-}
+// Error
+$_['error_permission']			= 'You do not have permission to modify invoices.';
+$_['error_firstname']			= 'First Name must be between 1 and 32 characters.';
+$_['error_lastname']			= 'Last Name must be between 1 and 32 characters.';
+$_['error_email']	 			= 'Email address does not seem to be valid.';
+$_['error_payment_name']	 	= 'Payment name must not be empty.';
+$_['error_currency_code']	 	= 'Currency must be selected.';
+$_['error_currency_value']	 	= 'Currency value must be greater than 0.';
+$_['error_date_due']	 		= 'Date due must not be empty.';
+$_['error_item']	 			= 'At least one item is required for total calculation.';
